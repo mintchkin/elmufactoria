@@ -3,8 +3,10 @@ module Main exposing (..)
 import Browser exposing (..)
 import Browser.Events as BE
 import Element as El exposing (..)
-import Element.Background as B
+import Element.Background as Background
+import Element.Border as Border
 import Element.Events as E
+import Element.Font exposing (center)
 import Html exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as D
@@ -104,6 +106,32 @@ toPixels value =
     String.fromFloat value ++ "px"
 
 
+track : Element msg
+track =
+    el
+        [ centerX
+        , centerY
+        , width (px 20)
+        , height (px 40)
+        , Background.color (rgb 0 0 0)
+        ]
+        none
+
+
+rgSplitter : Element msg
+rgSplitter =
+    el
+        [ centerX
+        , centerY
+        , width (px 30)
+        , height (px 30)
+        , Border.rounded 20
+        , Border.width 2
+        , Border.color (rgb 0 1 0)
+        ]
+        none
+
+
 viewBox : Model -> Element Msg
 viewBox model =
     let
@@ -111,15 +139,16 @@ viewBox model =
             model.mousePos
     in
     el
-        [ B.color (rgb 0 0 0)
-        , width (px 50)
+        [ width (px 50)
         , height (px 50)
         , htmlAttribute <| HA.style "position" "absolute"
         , htmlAttribute <| HA.style "left" (toPixels (xPos - 25))
         , htmlAttribute <| HA.style "top" (toPixels (yPos - 25))
         , E.onClick (SetDragging Box)
+        , Border.color (rgb 0 0 0)
+        , Border.width 2
         ]
-        none
+        track
 
 
 view : Model -> Html Msg
