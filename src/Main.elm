@@ -6,7 +6,6 @@ import Element as El exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as E
-import Element.Font exposing (center)
 import Html exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as D
@@ -38,7 +37,8 @@ type Position
 
 type Tile
     = Nothing
-    | Box
+    | Track
+    | RGSplitter
 
 
 init : () -> ( Model, Cmd Msg )
@@ -58,9 +58,12 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.dragging of
         Nothing ->
-            Sub.none
+            BE.onMouseDown <|
+                D.map2 SetPosition
+                    (D.field "pageX" D.float)
+                    (D.field "pageY" D.float)
 
-        Box ->
+        _ ->
             BE.onMouseMove <|
                 D.map2 SetPosition
                     (D.field "pageX" D.float)
@@ -106,57 +109,83 @@ toPixels value =
     String.fromFloat value ++ "px"
 
 
-track : Element msg
-track =
-    el
-        [ centerX
-        , centerY
-        , width (px 20)
-        , height (px 40)
-        , Background.color (rgb 0 0 0)
-        ]
-        none
+viewTile : Tile -> Element msg
+viewTile tile =
+    case tile of
+        Nothing ->
+            none
+
+        Track ->
+            el
+                [ centerX
+                , centerY
+                , width (px 20)
+                , height (px 40)
+                , Background.color (rgb 0 0 0)
+                ]
+                none
+
+        RGSplitter ->
+            el
+                [ centerX
+                , centerY
+                , width (px 30)
+                , height (px 30)
+                , Border.rounded 20
+                , Border.width 2
+                , Border.color (rgb 0 1 0)
+                ]
+                none
 
 
-rgSplitter : Element msg
-rgSplitter =
-    el
-        [ centerX
-        , centerY
-        , width (px 30)
-        , height (px 30)
-        , Border.rounded 20
-        , Border.width 2
-        , Border.color (rgb 0 1 0)
-        ]
-        none
-
-
-viewBox : Model -> Element Msg
-viewBox model =
-    let
-        (Position xPos yPos) =
-            model.mousePos
-    in
+viewBox : Tile -> Element Msg
+viewBox tile =
     el
         [ width (px 50)
         , height (px 50)
-        , htmlAttribute <| HA.style "position" "absolute"
-        , htmlAttribute <| HA.style "left" (toPixels (xPos - 25))
-        , htmlAttribute <| HA.style "top" (toPixels (yPos - 25))
-        , E.onClick (SetDragging Box)
+        , E.onClick (SetDragging tile)
         , Border.color (rgb 0 0 0)
         , Border.width 2
         ]
-        track
+        (viewTile tile)
+
+
+viewPalette : Element Msg
+viewPalette =
+    El.column
+        [ El.padding 10
+        , El.spacing 10
+        ]
+        [ viewBox Track
+        , viewBox RGSplitter
+        ]
+
+
+viewBrush : Model -> Element Msg
+viewBrush model =
+    let
+        (Position xpos ypos) =
+            model.mousePos
+    in
+    case model.dragging of
+        Nothing ->
+            none
+
+        tile ->
+            el
+                [ htmlAttribute <| HA.style "position" "absolute"
+                , htmlAttribute <| HA.style "left" (toPixels (xpos - 25))
+                , htmlAttribute <| HA.style "top" (toPixels (ypos - 25))
+                ]
+                (viewBox tile)
 
 
 view : Model -> Html Msg
 view model =
-    El.layout
-        []
+    El.layout []
         (El.row
             []
-            [ viewBox model
+            [ viewPalette
+            , viewBrush model
             ]
         )
