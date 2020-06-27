@@ -39,8 +39,15 @@ type Position
 
 type Tile
     = Empty
-    | Track
+    | Track Direction
     | RBSplitter
+
+
+type Direction
+    = Up
+    | Right
+    | Down
+    | Left
 
 
 init : () -> ( Model, Cmd Msg )
@@ -67,10 +74,16 @@ subscriptions model =
                     (D.field "pageY" D.float)
 
         _ ->
-            BE.onMouseMove <|
-                D.map2 SetPosition
-                    (D.field "pageX" D.float)
-                    (D.field "pageY" D.float)
+            Sub.batch
+                [ BE.onMouseMove <|
+                    D.map2 SetPosition
+                        (D.field "pageX" D.float)
+                        (D.field "pageY" D.float)
+                , BE.onKeyDown <|
+                    D.map
+                        (SetDirection << toDirection)
+                        (D.field "key" D.string)
+                ]
 
 
 
@@ -81,6 +94,7 @@ type Msg
     = SetPosition Float Float
     | SetDragging Tile
     | SetGridTile Int
+    | SetDirection (Maybe Direction)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -110,6 +124,18 @@ update msg model =
             , Cmd.none
             )
 
+        SetDirection maybeDirection ->
+            let
+                justDirection default =
+                    Maybe.withDefault default maybeDirection
+            in
+            case model.dragging of
+                Track direction ->
+                    ( { model | dragging = Track (justDirection direction) }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
 
 
 -- VIEW
@@ -121,15 +147,21 @@ viewTile tile =
         Empty ->
             El.none
 
-        Track ->
-            El.el
-                [ centerX
-                , alignBottom
-                , width (px 20)
-                , height (px 40)
-                , Background.color (rgb 0 0 0)
+        Track direction ->
+            El.row
+                [ width fill
+                , height fill
+                , rotate (toRotation direction)
                 ]
-                none
+                [ el
+                    [ centerX
+                    , alignBottom
+                    , width (px 20)
+                    , height (px 40)
+                    , Background.color (rgb 0 0 0)
+                    ]
+                    none
+                ]
 
         RBSplitter ->
             let
@@ -166,7 +198,7 @@ viewPalette =
         , El.spacing 10
         , El.alignTop
         ]
-        [ viewBox [ E.onClick (SetDragging Track) ] Track
+        [ viewBox [ E.onClick (SetDragging (Track Down)) ] (Track Down)
         , viewBox [ E.onClick (SetDragging RBSplitter) ] RBSplitter
         ]
 
@@ -251,3 +283,38 @@ squareUp list =
             round << sqrt << toFloat << List.length
     in
     chunk (getSize list) list
+
+
+toRotation : Direction -> Float
+toRotation direction =
+    case direction of
+        Down ->
+            turns 0
+
+        Left ->
+            turns 0.25
+
+        Up ->
+            turns 0.5
+
+        Right ->
+            turns 0.75
+
+
+toDirection : String -> Maybe Direction
+toDirection key =
+    case String.uncons key of
+        Just ( 'w', "" ) ->
+            Just Up
+
+        Just ( 'd', "" ) ->
+            Just Right
+
+        Just ( 's', "" ) ->
+            Just Down
+
+        Just ( 'a', "" ) ->
+            Just Left
+
+        _ ->
+            Nothing
