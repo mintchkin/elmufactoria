@@ -22,6 +22,15 @@ main =
         }
 
 
+levels : List Level
+levels =
+    [ { name = "Starter Level"
+      , description = "This is a description of a level, it can be pretty long but probably not so long that it's more than two or three lines"
+      , size = 7
+      }
+    ]
+
+
 
 -- MODEL
 
@@ -30,6 +39,14 @@ type alias Model =
     { mousePos : Position
     , dragging : Tile
     , grid : Array Tile
+    , level : Level
+    }
+
+
+type alias Level =
+    { name : String
+    , description : String
+    , size : Int
     }
 
 
@@ -68,10 +85,7 @@ initBoard size =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { mousePos = Position 50 50
-      , dragging = Empty
-      , grid = initBoard 7
-      }
+    ( loadLevel <| List.head levels
     , Cmd.none
     )
 
@@ -276,11 +290,17 @@ viewGrid model =
 view : Model -> Html Msg
 view model =
     El.layout []
-        (El.row
+        (El.column
             []
-            [ viewPalette
-            , viewGrid model
-            , viewBrush model
+            [ El.row
+                []
+                [ viewPalette
+                , viewGrid model
+                , viewBrush model
+                ]
+            , El.paragraph
+                []
+                [ text model.level.description ]
             ]
         )
 
@@ -346,3 +366,16 @@ toDirection key =
 
         _ ->
             Nothing
+
+
+loadLevel : Maybe Level -> Model
+loadLevel maybeLevel =
+    let
+        level =
+            Maybe.withDefault { name = "", description = "", size = 7 } maybeLevel
+    in
+    { mousePos = Position 0 0
+    , dragging = Empty
+    , grid = initBoard level.size
+    , level = level
+    }
