@@ -138,15 +138,16 @@ viewTile tile =
                 none
 
 
-viewBox : Tile -> Element Msg
-viewBox tile =
+viewBox : List (Attribute Msg) -> Tile -> Element Msg
+viewBox attributes tile =
     el
-        [ width (px 50)
-        , height (px 50)
-        , E.onClick (SetDragging tile)
-        , Border.color (rgb 0 0 0)
-        , Border.width 2
-        ]
+        ([ width (px 50)
+         , height (px 50)
+         , Border.color (rgb 0 0 0)
+         , Border.width 2
+         ]
+            ++ attributes
+        )
         (viewTile tile)
 
 
@@ -156,8 +157,8 @@ viewPalette =
         [ El.padding 10
         , El.spacing 10
         ]
-        [ viewBox Track
-        , viewBox RGSplitter
+        [ viewBox [ E.onClick (SetDragging Track) ] Track
+        , viewBox [ E.onClick (SetDragging RGSplitter) ] RGSplitter
         ]
 
 
@@ -176,8 +177,9 @@ viewBrush model =
                 [ htmlAttribute <| HA.style "position" "absolute"
                 , htmlAttribute <| HA.style "left" (toPixels (xpos - 25))
                 , htmlAttribute <| HA.style "top" (toPixels (ypos - 25))
+                , htmlAttribute <| HA.style "pointer-events" "none"
                 ]
-                (viewBox tile)
+                (viewBox [] tile)
 
 
 view : Model -> Html Msg
