@@ -178,6 +178,7 @@ viewPalette =
     El.column
         [ El.padding 10
         , El.spacing 10
+        , El.alignTop
         ]
         [ viewBox [ E.onClick (SetDragging Track) ] Track
         , viewBox [ E.onClick (SetDragging RGSplitter) ] RGSplitter
@@ -196,7 +197,7 @@ viewBrush model =
 
         tile ->
             el
-                [ htmlAttribute <| HA.style "position" "absolute"
+                [ htmlAttribute <| HA.style "position" "fixed"
                 , htmlAttribute <| HA.style "left" (toPixels (xpos - 25))
                 , htmlAttribute <| HA.style "top" (toPixels (ypos - 25))
                 , htmlAttribute <| HA.style "pointer-events" "none"
@@ -206,7 +207,9 @@ viewBrush model =
 
 viewGrid : Model -> Element Msg
 viewGrid model =
-    El.column [] <|
+    El.column
+        [ El.padding 10 ]
+    <|
         List.map (row []) (squareUp <| List.map (viewBox []) model.grid)
 
 
@@ -214,9 +217,9 @@ view : Model -> Html Msg
 view model =
     El.layout []
         (El.row
-            [ spacing 50 ]
+            []
             [ viewPalette
-            , viewBrush model
             , viewGrid model
+            , viewBrush model
             ]
         )
