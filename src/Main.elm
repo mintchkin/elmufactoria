@@ -29,7 +29,7 @@ main =
 type alias Model =
     { mousePos : Position
     , dragging : Tile
-    , grid : List Tile
+    , grid : Array Tile
     }
 
 
@@ -47,7 +47,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { mousePos = Position 50 50
       , dragging = Empty
-      , grid = List.repeat (7 * 7) Empty
+      , grid = Array.repeat (7 * 7) Empty
       }
     , Cmd.none
     )
@@ -105,16 +105,7 @@ update msg model =
 
         SetGridTile index ->
             ( { model
-                | grid =
-                    List.indexedMap
-                        (\ix value ->
-                            if ix == index then
-                                model.dragging
-
-                            else
-                                value
-                        )
-                        model.grid
+                | grid = Array.set index model.dragging model.grid
               }
             , Cmd.none
             )
@@ -122,30 +113,6 @@ update msg model =
 
 
 -- VIEW
-
-
-toPixels : Float -> String
-toPixels value =
-    String.fromFloat value ++ "px"
-
-
-chunk : Int -> List a -> List (List a)
-chunk i list =
-    case List.take i list of
-        [] ->
-            []
-
-        group ->
-            group :: chunk i (List.drop i list)
-
-
-squareUp : List a -> List (List a)
-squareUp list =
-    let
-        getSize =
-            round << sqrt << toFloat << List.length
-    in
-    chunk (getSize list) list
 
 
 viewTile : Tile -> Element Msg
@@ -222,12 +189,26 @@ viewBrush model =
                 (viewBox [] tile)
 
 
+viewGridRow : List ( Int, Tile ) -> Element Msg
+viewGridRow indexedTiles =
+    let
+        viewCell (index, tile) =
+            viewBox [ E.onClick (SetGridTile index) ] tile
+    in
+    indexedTiles
+        |> List.map viewCell
+        |> row []
+
+
 viewGrid : Model -> Element Msg
 viewGrid model =
     El.column
         [ El.padding 10 ]
-    <|
-        List.map (row []) (squareUp <| List.indexedMap (\ix -> viewBox [ E.onClick (SetGridTile ix) ]) model.grid)
+        (model.grid
+            |> Array.toIndexedList
+            |> squareUp
+            |> List.map viewGridRow
+        )
 
 
 view : Model -> Html Msg
@@ -240,3 +221,31 @@ view model =
             , viewBrush model
             ]
         )
+
+
+
+-- HELPERS
+
+
+toPixels : Float -> String
+toPixels value =
+    String.fromFloat value ++ "px"
+
+
+chunk : Int -> List a -> List (List a)
+chunk i list =
+    case List.take i list of
+        [] ->
+            []
+
+        group ->
+            group :: chunk i (List.drop i list)
+
+
+squareUp : List a -> List (List a)
+squareUp list =
+    let
+        getSize =
+            round << sqrt << toFloat << List.length
+    in
+    chunk (getSize list) list
