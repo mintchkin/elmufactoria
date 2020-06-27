@@ -106,14 +106,7 @@ update msg model =
             )
 
         SetDragging tile ->
-            ( { model
-                | dragging =
-                    if model.dragging == tile then
-                        Empty
-
-                    else
-                        tile
-              }
+            ( { model | dragging = tile }
             , Cmd.none
             )
 
@@ -200,6 +193,7 @@ viewPalette =
         ]
         [ viewBox [ E.onClick (SetDragging (Track Down)) ] (Track Down)
         , viewBox [ E.onClick (SetDragging RBSplitter) ] RBSplitter
+        , viewBox [ E.onClick (SetDragging Empty) ] Empty
         ]
 
 
