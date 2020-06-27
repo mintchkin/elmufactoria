@@ -41,6 +41,8 @@ type Tile
     = Empty
     | Track Direction
     | RBSplitter Direction
+    | Begin
+    | End
 
 
 type Direction
@@ -50,11 +52,25 @@ type Direction
     | Left
 
 
+initBoard : Int -> Array Tile
+initBoard size =
+    let
+        begin =
+            round (toFloat size / 2) - 1
+
+        end =
+            (size ^ 2) - begin - 1
+    in
+    Array.repeat (size ^ 2) Empty
+        |> Array.set begin Begin
+        |> Array.set end End
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { mousePos = Position 50 50
       , dragging = Empty
-      , grid = Array.repeat (7 * 7) Empty
+      , grid = initBoard 7
       }
     , Cmd.none
     )
@@ -111,11 +127,19 @@ update msg model =
             )
 
         SetGridTile index ->
-            ( { model
-                | grid = Array.set index model.dragging model.grid
-              }
-            , Cmd.none
-            )
+            case Array.get index model.grid of
+                Just Begin ->
+                    ( model, Cmd.none )
+
+                Just End ->
+                    ( model, Cmd.none )
+
+                _ ->
+                    ( { model
+                        | grid = Array.set index model.dragging model.grid
+                      }
+                    , Cmd.none
+                    )
 
         SetDirection maybeDirection ->
             let
@@ -142,6 +166,12 @@ viewTile tile =
     case tile of
         Empty ->
             El.none
+
+        Begin ->
+            El.el [ width fill, height fill, Background.color (rgb 1 0 0) ] none
+
+        End ->
+            El.el [ width fill, height fill, Background.color (rgb 0 0 1) ] none
 
         Track direction ->
             El.row
