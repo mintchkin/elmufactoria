@@ -1,5 +1,6 @@
 module Main exposing (..)
 
+import Array exposing (Array(..))
 import Browser exposing (..)
 import Browser.Events as BE
 import Element as El exposing (..)
@@ -28,6 +29,7 @@ main =
 type alias Model =
     { mousePos : Position
     , dragging : Tile
+    , grid : List Tile
     }
 
 
@@ -36,7 +38,7 @@ type Position
 
 
 type Tile
-    = Nothing
+    = Empty
     | Track
     | RGSplitter
 
@@ -44,7 +46,8 @@ type Tile
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { mousePos = Position 50 50
-      , dragging = Nothing
+      , dragging = Empty
+      , grid = List.repeat (5 * 5) Empty
       }
     , Cmd.none
     )
@@ -57,7 +60,7 @@ init _ =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.dragging of
-        Nothing ->
+        Empty ->
             BE.onMouseDown <|
                 D.map2 SetPosition
                     (D.field "pageX" D.float)
@@ -91,7 +94,7 @@ update msg model =
             ( { model
                 | dragging =
                     if model.dragging == tile then
-                        Nothing
+                        Empty
 
                     else
                         tile
@@ -109,10 +112,29 @@ toPixels value =
     String.fromFloat value ++ "px"
 
 
-viewTile : Tile -> Element msg
+chunk : Int -> List a -> List (List a)
+chunk i list =
+    case List.take i list of
+        [] ->
+            []
+
+        group ->
+            group :: chunk i (List.drop i list)
+
+
+squareUp : List a -> List (List a)
+squareUp list =
+    let
+        getSize =
+            round << sqrt << toFloat << List.length
+    in
+    chunk (getSize list) list
+
+
+viewTile : Tile -> Element Msg
 viewTile tile =
     case tile of
-        Nothing ->
+        Empty ->
             none
 
         Track ->
@@ -169,7 +191,7 @@ viewBrush model =
             model.mousePos
     in
     case model.dragging of
-        Nothing ->
+        Empty ->
             none
 
         tile ->
@@ -182,12 +204,19 @@ viewBrush model =
                 (viewBox [] tile)
 
 
+viewGrid : Model -> Element Msg
+viewGrid model =
+    El.column [] <|
+        List.map (row []) (squareUp <| List.map (viewBox []) model.grid)
+
+
 view : Model -> Html Msg
 view model =
     El.layout []
         (El.row
-            []
+            [ spacing 50 ]
             [ viewPalette
             , viewBrush model
+            , viewGrid model
             ]
         )
