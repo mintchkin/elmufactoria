@@ -40,7 +40,7 @@ type Position
 type Tile
     = Empty
     | Track
-    | RGSplitter
+    | RBSplitter
 
 
 init : () -> ( Model, Cmd Msg )
@@ -119,29 +119,31 @@ viewTile : Tile -> Element Msg
 viewTile tile =
     case tile of
         Empty ->
-            none
+            El.none
 
         Track ->
-            el
+            El.el
                 [ centerX
-                , centerY
+                , alignBottom
                 , width (px 20)
                 , height (px 40)
                 , Background.color (rgb 0 0 0)
                 ]
                 none
 
-        RGSplitter ->
-            el
-                [ centerX
-                , centerY
-                , width (px 30)
-                , height (px 30)
-                , Border.rounded 20
-                , Border.width 2
-                , Border.color (rgb 0 1 0)
+        RBSplitter ->
+            let
+                indicator attrs =
+                    el ([ width (px 10), height (px 10) ] ++ attrs) none
+            in
+            El.row
+                [ width fill
+                , height fill
                 ]
-                none
+                [ indicator [ Background.color (rgb 1 0 0), alignLeft ]
+                , indicator [ Background.color (rgb 0.3 0.3 0.3), centerX, alignBottom ]
+                , indicator [ Background.color (rgb 0 0 1), alignRight ]
+                ]
 
 
 viewBox : List (Attribute Msg) -> Tile -> Element Msg
@@ -165,7 +167,7 @@ viewPalette =
         , El.alignTop
         ]
         [ viewBox [ E.onClick (SetDragging Track) ] Track
-        , viewBox [ E.onClick (SetDragging RGSplitter) ] RGSplitter
+        , viewBox [ E.onClick (SetDragging RBSplitter) ] RBSplitter
         ]
 
 
@@ -192,7 +194,7 @@ viewBrush model =
 viewGridRow : List ( Int, Tile ) -> Element Msg
 viewGridRow indexedTiles =
     let
-        viewCell (index, tile) =
+        viewCell ( index, tile ) =
             viewBox [ E.onClick (SetGridTile index) ] tile
     in
     indexedTiles
