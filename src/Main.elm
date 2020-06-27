@@ -47,7 +47,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { mousePos = Position 50 50
       , dragging = Empty
-      , grid = List.repeat (5 * 5) Empty
+      , grid = List.repeat (7 * 7) Empty
       }
     , Cmd.none
     )
@@ -80,6 +80,7 @@ subscriptions model =
 type Msg
     = SetPosition Float Float
     | SetDragging Tile
+    | SetGridTile Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -98,6 +99,22 @@ update msg model =
 
                     else
                         tile
+              }
+            , Cmd.none
+            )
+
+        SetGridTile index ->
+            ( { model
+                | grid =
+                    List.indexedMap
+                        (\ix value ->
+                            if ix == index then
+                                model.dragging
+
+                            else
+                                value
+                        )
+                        model.grid
               }
             , Cmd.none
             )
@@ -210,7 +227,7 @@ viewGrid model =
     El.column
         [ El.padding 10 ]
     <|
-        List.map (row []) (squareUp <| List.map (viewBox []) model.grid)
+        List.map (row []) (squareUp <| List.indexedMap (\ix -> viewBox [ E.onClick (SetGridTile ix) ]) model.grid)
 
 
 view : Model -> Html Msg
