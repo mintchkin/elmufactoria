@@ -40,7 +40,7 @@ type Position
 type Tile
     = Empty
     | Track Direction
-    | RBSplitter
+    | RBSplitter Direction
 
 
 type Direction
@@ -126,6 +126,9 @@ update msg model =
                 Track direction ->
                     ( { model | dragging = Track (justDirection direction) }, Cmd.none )
 
+                RBSplitter direction ->
+                    ( { model | dragging = RBSplitter (justDirection direction) }, Cmd.none )
+
                 _ ->
                     ( model, Cmd.none )
 
@@ -156,7 +159,7 @@ viewTile tile =
                     none
                 ]
 
-        RBSplitter ->
+        RBSplitter direction ->
             let
                 indicator attrs =
                     el ([ width (px 10), height (px 10) ] ++ attrs) none
@@ -164,6 +167,7 @@ viewTile tile =
             El.row
                 [ width fill
                 , height fill
+                , rotate (toRotation direction)
                 ]
                 [ indicator [ Background.color (rgb 1 0 0), alignLeft ]
                 , indicator [ Background.color (rgb 0.3 0.3 0.3), centerX, alignBottom ]
@@ -192,7 +196,7 @@ viewPalette =
         , El.alignTop
         ]
         [ viewBox [ E.onClick (SetDragging (Track Down)) ] (Track Down)
-        , viewBox [ E.onClick (SetDragging RBSplitter) ] RBSplitter
+        , viewBox [ E.onClick (SetDragging (RBSplitter Down)) ] (RBSplitter Down)
         , viewBox [ E.onClick (SetDragging Empty) ] Empty
         ]
 
