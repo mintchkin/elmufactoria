@@ -331,12 +331,12 @@ view model =
                 [ padding 10, spacing 10 ]
                 [ viewPalette
                 , viewGrid model
-                , viewBrush model
                 , viewSuccessIndicator model
                 ]
             , El.paragraph
                 [ Font.center ]
                 [ text model.level.description ]
+            , El.el [] (viewBrush model)
             ]
         )
 
