@@ -7,6 +7,7 @@ import Element as El exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as E
+import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as D
@@ -25,8 +26,9 @@ main =
 levels : List Level
 levels =
     [ { name = "Starter Level"
-      , description = "This is a description of a level, it can be pretty long but probably not so long that it's more than two or three lines"
+      , description = "Allow all robots to get safely from the start to the end"
       , size = 7
+      , criteria = always True
       }
     ]
 
@@ -40,6 +42,7 @@ type alias Model =
     , dragging : Tile
     , grid : Array Tile
     , level : Level
+    , success : Bool
     }
 
 
@@ -47,6 +50,7 @@ type alias Level =
     { name : String
     , description : String
     , size : Int
+    , criteria : Criteria
     }
 
 
@@ -149,8 +153,13 @@ update msg model =
                     ( model, Cmd.none )
 
                 _ ->
+                    let
+                        newGrid =
+                            Array.set index model.dragging model.grid
+                    in
                     ( { model
-                        | grid = Array.set index model.dragging model.grid
+                        | grid = newGrid
+                        , success = checkSolution model.level newGrid
                       }
                     , Cmd.none
                     )
@@ -235,8 +244,7 @@ viewBox attributes tile =
 viewPalette : Element Msg
 viewPalette =
     El.column
-        [ El.padding 10
-        , El.spacing 10
+        [ El.spacing 10
         , El.alignTop
         ]
         [ viewBox [ E.onClick (SetDragging (Track Down)) ] (Track Down)
@@ -279,7 +287,7 @@ viewGridRow indexedTiles =
 viewGrid : Model -> Element Msg
 viewGrid model =
     El.column
-        [ El.padding 10 ]
+        []
         (model.grid
             |> Array.toIndexedList
             |> squareUp
@@ -287,19 +295,38 @@ viewGrid model =
         )
 
 
+viewSuccessIndicator : Model -> Element Msg
+viewSuccessIndicator model =
+    let
+        color =
+            if model.success then
+                rgb 0 1 0
+
+            else
+                rgb 1 0 0
+    in
+    El.el
+        [ width (px 100)
+        , height fill
+        , Background.color color
+        ]
+        none
+
+
 view : Model -> Html Msg
 view model =
-    El.layout []
+    El.layout [ width fill, height fill ]
         (El.column
-            []
+            [ centerX, centerY ]
             [ El.row
-                []
+                [ padding 10, spacing 10 ]
                 [ viewPalette
                 , viewGrid model
                 , viewBrush model
+                , viewSuccessIndicator model
                 ]
             , El.paragraph
-                []
+                [ Font.center ]
                 [ text model.level.description ]
             ]
         )
@@ -372,10 +399,148 @@ loadLevel : Maybe Level -> Model
 loadLevel maybeLevel =
     let
         level =
-            Maybe.withDefault { name = "", description = "", size = 7 } maybeLevel
+            Maybe.withDefault
+                (Level "" "" 0 (always False))
+                maybeLevel
     in
     { mousePos = Position 0 0
     , dragging = Empty
     , grid = initBoard level.size
     , level = level
+    , success = False
     }
+
+
+
+-- SOLUTIONS
+
+
+type alias Criteria =
+    Robot -> Bool
+
+
+type Robot
+    = Robot
+
+
+type Result
+    = Passed
+    | Failed
+
+
+type Progress
+    = Finished Result
+    | Working Int
+
+
+checkSolution : Level -> Array Tile -> Bool
+checkSolution level solution =
+    let
+        size =
+            round (sqrt (toFloat (Array.length solution)))
+
+        begin =
+            round (toFloat size / 2) - 1
+
+        robot =
+            Robot
+    in
+    case simulate solution robot begin of
+        Passed ->
+            level.criteria Robot
+
+        Failed ->
+            not (level.criteria Robot)
+
+
+simulate : Array Tile -> Robot -> Int -> Result
+simulate tiles robot start =
+    let
+        ( nextRobot, nextProgress ) =
+            step tiles ( robot, Working start )
+    in
+    case nextProgress of
+        Working position ->
+            simulate tiles nextRobot position
+
+        Finished result ->
+            result
+
+
+step : Array Tile -> ( Robot, Progress ) -> ( Robot, Progress )
+step tiles ( robot, progress ) =
+    let
+        getDirection tile =
+            case tile of
+                RBSplitter direction ->
+                    direction
+
+                Track direction ->
+                    direction
+
+                _ ->
+                    Down
+    in
+    case progress of
+        Working position ->
+            case Array.get position tiles of
+                Just End ->
+                    ( robot, Finished Passed )
+
+                Just tile ->
+                    ( robot
+                    , move tiles position <| getDirection tile
+                    )
+
+                Nothing ->
+                    ( robot, Finished Failed )
+
+        Finished result ->
+            ( robot, Finished result )
+
+
+move : Array Tile -> Int -> Direction -> Progress
+move tiles position direction =
+    let
+        size =
+            round (sqrt (toFloat (Array.length tiles)))
+
+        check next =
+            case Array.get next tiles of
+                Just Empty ->
+                    Finished Failed
+
+                Nothing ->
+                    Finished Failed
+
+                _ ->
+                    Working next
+    in
+    case direction of
+        Up ->
+            if (position - size) >= 0 then
+                check (position - size)
+
+            else
+                Finished Failed
+
+        Down ->
+            if (position + size) < Array.length tiles then
+                check (position + size)
+
+            else
+                Finished Failed
+
+        Left ->
+            if modBy size position /= 0 then
+                check (position - 1)
+
+            else
+                Finished Failed
+
+        Right ->
+            if modBy size (position + 1) /= 0 then
+                check (position + 1)
+
+            else
+                Finished Failed
