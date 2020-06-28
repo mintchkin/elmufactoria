@@ -423,7 +423,7 @@ type alias Criteria =
 
 
 type Robot
-    = Robot Int
+    = Robot Int (List Int)
 
 
 type Result
@@ -446,7 +446,7 @@ checkSolution level solution =
             round (toFloat size / 2) - 1
 
         robot =
-            Robot begin
+            Robot begin []
     in
     case simulate solution robot of
         Passed ->
@@ -485,8 +485,11 @@ getDirection tile =
 checkSafety : Array Tile -> Robot -> Progress
 checkSafety tiles robot =
     let
-        (Robot position) =
+        (Robot position memories) =
             robot
+
+        dejavu =
+            List.member position memories
     in
     case Array.get position tiles of
         Just End ->
@@ -495,11 +498,15 @@ checkSafety tiles robot =
         Just Empty ->
             Finished Failed
 
-        Just tile ->
-            Working tile
-
         Nothing ->
             Finished Failed
+
+        Just tile ->
+            if dejavu then
+                Finished Failed
+
+            else
+                Working tile
 
 
 move : Array Tile -> Robot -> Direction -> Maybe Robot
@@ -508,34 +515,34 @@ move tiles robot direction =
         size =
             round (sqrt (toFloat (Array.length tiles)))
 
-        (Robot position) =
+        (Robot position memories) =
             robot
     in
     case direction of
         Up ->
             if (position - size) >= 0 then
-                Just <| Robot (position - size)
+                Just <| Robot (position - size) (position :: memories)
 
             else
                 Nothing
 
         Down ->
             if (position + size) < Array.length tiles then
-                Just <| Robot (position + size)
+                Just <| Robot (position + size) (position :: memories)
 
             else
                 Nothing
 
         Left ->
             if modBy size position /= 0 then
-                Just <| Robot (position - 1)
+                Just <| Robot (position - 1) (position :: memories)
 
             else
                 Nothing
 
         Right ->
             if modBy size (position + 1) /= 0 then
-                Just <| Robot (position + 1)
+                Just <| Robot (position + 1) (position :: memories)
 
             else
                 Nothing
