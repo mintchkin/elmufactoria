@@ -29,12 +29,12 @@ levels : List Level
 levels =
     [ { name = "Starter Level"
       , description = "Allow all robots to get safely from the start to the end"
-      , size = 5
+      , size = 3
       , criteria = always Passed
       }
     , { name = "Checking ID"
       , description = "Allow only robots whose codes start with Red"
-      , size = 7
+      , size = 4
       , criteria =
             \robot ->
                 case List.head robot.codes of
@@ -83,20 +83,17 @@ type Tile
 initBoard : Int -> Array Tile
 initBoard size =
     let
-        begin =
-            round (toFloat size / 2) - 1
-
-        end =
-            (size ^ 2) - begin - 1
+        width =
+            size * 2 - 1
     in
-    Array.repeat (size ^ 2) Empty
-        |> Array.set begin Begin
-        |> Array.set end End
+    Array.repeat (width ^ 2) Empty
+        |> Array.set (size - 1) Begin
+        |> Array.set (width ^ 2 - size) End
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( loadLevel <| Maybe.andThen List.head (List.tail levels)
+    ( loadLevel <| List.head levels
     , Cmd.none
     )
 
