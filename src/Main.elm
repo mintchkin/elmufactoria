@@ -423,7 +423,7 @@ type alias Criteria =
 
 
 type Robot
-    = Robot
+    = Robot Int
 
 
 type Result
@@ -433,7 +433,7 @@ type Result
 
 type Progress
     = Finished Result
-    | Working Int
+    | Working Tile
 
 
 checkSolution : Level -> Array Tile -> Bool
@@ -446,104 +446,96 @@ checkSolution level solution =
             round (toFloat size / 2) - 1
 
         robot =
-            Robot
+            Robot begin
     in
-    case simulate solution robot begin of
+    case simulate solution robot of
         Passed ->
-            level.criteria Robot
+            level.criteria robot
 
         Failed ->
-            not (level.criteria Robot)
+            not (level.criteria robot)
 
 
-simulate : Array Tile -> Robot -> Int -> Result
-simulate tiles robot start =
-    let
-        ( nextRobot, nextProgress ) =
-            step tiles ( robot, Working start )
-    in
-    case nextProgress of
-        Working position ->
-            simulate tiles nextRobot position
-
+simulate : Array Tile -> Robot -> Result
+simulate tiles robot =
+    case checkSafety tiles robot of
         Finished result ->
             result
 
+        Working tile ->
+            getDirection tile
+                |> move tiles robot
+                |> Maybe.map (simulate tiles)
+                |> Maybe.withDefault Failed
 
-step : Array Tile -> ( Robot, Progress ) -> ( Robot, Progress )
-step tiles ( robot, progress ) =
+
+getDirection : Tile -> Direction
+getDirection tile =
+    case tile of
+        RBSplitter direction ->
+            direction
+
+        Track direction ->
+            direction
+
+        _ ->
+            Down
+
+
+checkSafety : Array Tile -> Robot -> Progress
+checkSafety tiles robot =
     let
-        getDirection tile =
-            case tile of
-                RBSplitter direction ->
-                    direction
-
-                Track direction ->
-                    direction
-
-                _ ->
-                    Down
+        (Robot position) =
+            robot
     in
-    case progress of
-        Working position ->
-            case Array.get position tiles of
-                Just End ->
-                    ( robot, Finished Passed )
+    case Array.get position tiles of
+        Just End ->
+            Finished Passed
 
-                Just tile ->
-                    ( robot
-                    , move tiles position <| getDirection tile
-                    )
+        Just Empty ->
+            Finished Failed
 
-                Nothing ->
-                    ( robot, Finished Failed )
+        Just tile ->
+            Working tile
 
-        Finished result ->
-            ( robot, Finished result )
+        Nothing ->
+            Finished Failed
 
 
-move : Array Tile -> Int -> Direction -> Progress
-move tiles position direction =
+move : Array Tile -> Robot -> Direction -> Maybe Robot
+move tiles robot direction =
     let
         size =
             round (sqrt (toFloat (Array.length tiles)))
 
-        check next =
-            case Array.get next tiles of
-                Just Empty ->
-                    Finished Failed
-
-                Nothing ->
-                    Finished Failed
-
-                _ ->
-                    Working next
+        (Robot position) =
+            robot
     in
     case direction of
         Up ->
             if (position - size) >= 0 then
-                check (position - size)
+                Just <| Robot (position - size)
 
             else
-                Finished Failed
+                Nothing
 
         Down ->
             if (position + size) < Array.length tiles then
-                check (position + size)
+                Just <| Robot (position + size)
 
             else
-                Finished Failed
+                Nothing
 
         Left ->
             if modBy size position /= 0 then
-                check (position - 1)
+                Just <| Robot (position - 1)
 
             else
-                Finished Failed
+                Nothing
 
         Right ->
             if modBy size (position + 1) /= 0 then
-                check (position + 1)
+                Just <| Robot (position + 1)
 
             else
-                Finished Failed
+                Nothing
