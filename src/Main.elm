@@ -317,8 +317,11 @@ view : Model -> Html Msg
 view model =
     El.layout [ width fill, height fill ]
         (El.column
-            [ centerX, centerY ]
-            [ El.row
+            [ centerX, centerY, spacing 20 ]
+            [ El.paragraph
+                [ Font.center, Font.bold, Font.size 40 ]
+                [ text model.level.name ]
+            , El.row
                 [ padding 10, spacing 10 ]
                 [ viewPalette
                 , viewGrid model
