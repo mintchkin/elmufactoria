@@ -3,6 +3,7 @@ module Main exposing (..)
 import Array exposing (Array(..))
 import Browser exposing (..)
 import Browser.Events as BE
+import Direction as Direction exposing (Direction(..))
 import Element as El exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -78,13 +79,6 @@ type Tile
     | End
 
 
-type Direction
-    = Up
-    | Right
-    | Down
-    | Left
-
-
 initBoard : Int -> Array Tile
 initBoard size =
     let
@@ -127,7 +121,7 @@ subscriptions model =
                         (D.field "pageY" D.float)
                 , BE.onKeyDown <|
                     D.map
-                        (SetDirection << toDirection)
+                        (SetDirection << Direction.fromKey)
                         (D.field "key" D.string)
                 ]
 
@@ -391,25 +385,6 @@ toRotation direction =
             turns 0.75
 
 
-toDirection : String -> Maybe Direction
-toDirection key =
-    case String.uncons key of
-        Just ( 'w', "" ) ->
-            Just Up
-
-        Just ( 'd', "" ) ->
-            Just Right
-
-        Just ( 's', "" ) ->
-            Just Down
-
-        Just ( 'a', "" ) ->
-            Just Left
-
-        _ ->
-            Nothing
-
-
 loadLevel : Maybe Level -> Model
 loadLevel maybeLevel =
     let
@@ -496,61 +471,32 @@ simulate tiles robot =
             result
 
         Working tile ->
-            getDirection tile robot
-                |> (\( bot, direction ) -> move tiles bot direction)
+            List.head robot.codes
+                |> getDirection tile
+                |> move tiles { robot | codes = updateCodes tile robot.codes }
                 |> Maybe.map (simulate tiles)
                 |> Maybe.withDefault Failed
 
 
-getDirection : Tile -> Robot -> ( Robot, Direction )
-getDirection tile robot =
+getDirection : Tile -> Maybe Code -> Direction
+getDirection tile maybeCode =
     case tile of
         RBSplitter direction ->
-            case robot.codes of
-                Red :: rest ->
-                    let
-                        newBot =
-                            { robot | codes = rest }
-                    in
-                    case direction of
-                        Down ->
-                            ( newBot, Left )
+            case maybeCode of
+                Just Red ->
+                    Direction.shiftClockwise direction
 
-                        Left ->
-                            ( newBot, Up )
+                Just Blue ->
+                    Direction.flip <| Direction.shiftClockwise direction
 
-                        Up ->
-                            ( newBot, Right )
-
-                        Right ->
-                            ( newBot, Down )
-
-                Blue :: rest ->
-                    let
-                        newBot =
-                            { robot | codes = rest }
-                    in
-                    case direction of
-                        Down ->
-                            ( newBot, Right )
-
-                        Left ->
-                            ( newBot, Down )
-
-                        Up ->
-                            ( newBot, Left )
-
-                        Right ->
-                            ( newBot, Up )
-
-                [] ->
-                    ( robot, direction )
+                Nothing ->
+                    direction
 
         Track direction ->
-            ( robot, direction )
+            direction
 
         _ ->
-            ( robot, Down )
+            Down
 
 
 checkSafety : Array Tile -> Robot -> Progress
@@ -575,6 +521,24 @@ checkSafety tiles robot =
 
             else
                 Working tile
+
+
+updateCodes : Tile -> List Code -> List Code
+updateCodes tile codes =
+    case tile of
+        RBSplitter _ ->
+            case codes of
+                Red :: rest ->
+                    rest
+
+                Blue :: rest ->
+                    rest
+
+                _ ->
+                    codes
+
+        _ ->
+            codes
 
 
 move : Array Tile -> Robot -> Direction -> Maybe Robot
