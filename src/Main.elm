@@ -28,7 +28,19 @@ levels =
     [ { name = "Starter Level"
       , description = "Allow all robots to get safely from the start to the end"
       , size = 7
-      , criteria = always True
+      , criteria = always Passed
+      }
+    , { name = "Checking ID"
+      , description = "Allow only robots whose codes start with Red"
+      , size = 7
+      , criteria =
+            \robot ->
+                case List.head robot.codes of
+                    Just Red ->
+                        Passed
+
+                    _ ->
+                        Failed
       }
     ]
 
@@ -89,7 +101,7 @@ initBoard size =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( loadLevel <| List.head levels
+    ( loadLevel <| Maybe.andThen List.head (List.tail levels)
     , Cmd.none
     )
 
@@ -159,7 +171,7 @@ update msg model =
                     in
                     ( { model
                         | grid = newGrid
-                        , success = checkSolution model.level newGrid
+                        , success = checkSolution model.level newGrid testRobots
                       }
                     , Cmd.none
                     )
@@ -403,7 +415,7 @@ loadLevel maybeLevel =
     let
         level =
             Maybe.withDefault
-                (Level "" "" 0 (always False))
+                (Level "" "" 0 (always Failed))
                 maybeLevel
     in
     { mousePos = Position 0 0
@@ -419,12 +431,18 @@ loadLevel maybeLevel =
 
 
 type alias Criteria =
-    Robot -> Bool
+    Robot -> Result
+
+
+type Code
+    = Red
+    | Blue
 
 
 type alias Robot =
     { position : Int
     , memories : List Int
+    , codes : List Code
     }
 
 
@@ -438,24 +456,37 @@ type Progress
     | Working Tile
 
 
-checkSolution : Level -> Array Tile -> Bool
-checkSolution level solution =
+testRobots : List Robot
+testRobots =
+    [ Robot 0 [] []
+    , Robot 0 [] [ Red, Blue ]
+    , Robot 0 [] [ Blue, Red ]
+    ]
+
+
+checkSolution : Level -> Array Tile -> List Robot -> Bool
+checkSolution level solution robots =
     let
         size =
             round (sqrt (toFloat (Array.length solution)))
 
         begin =
             round (toFloat size / 2) - 1
-
-        robot =
-            Robot begin []
     in
-    case simulate solution robot of
-        Passed ->
-            level.criteria robot
+    case robots of
+        [] ->
+            True
 
-        Failed ->
-            not (level.criteria robot)
+        robot :: rest ->
+            let
+                positionedBot =
+                    { robot | position = begin }
+            in
+            if simulate solution positionedBot == level.criteria positionedBot then
+                checkSolution level solution rest
+
+            else
+                False
 
 
 simulate : Array Tile -> Robot -> Result
@@ -465,23 +496,61 @@ simulate tiles robot =
             result
 
         Working tile ->
-            getDirection tile
-                |> move tiles robot
+            getDirection tile robot
+                |> (\( bot, direction ) -> move tiles bot direction)
                 |> Maybe.map (simulate tiles)
                 |> Maybe.withDefault Failed
 
 
-getDirection : Tile -> Direction
-getDirection tile =
+getDirection : Tile -> Robot -> ( Robot, Direction )
+getDirection tile robot =
     case tile of
         RBSplitter direction ->
-            direction
+            case robot.codes of
+                Red :: rest ->
+                    let
+                        newBot =
+                            { robot | codes = rest }
+                    in
+                    case direction of
+                        Down ->
+                            ( newBot, Left )
+
+                        Left ->
+                            ( newBot, Up )
+
+                        Up ->
+                            ( newBot, Right )
+
+                        Right ->
+                            ( newBot, Down )
+
+                Blue :: rest ->
+                    let
+                        newBot =
+                            { robot | codes = rest }
+                    in
+                    case direction of
+                        Down ->
+                            ( newBot, Right )
+
+                        Left ->
+                            ( newBot, Down )
+
+                        Up ->
+                            ( newBot, Left )
+
+                        Right ->
+                            ( newBot, Up )
+
+                [] ->
+                    ( robot, direction )
 
         Track direction ->
-            direction
+            ( robot, direction )
 
         _ ->
-            Down
+            ( robot, Down )
 
 
 checkSafety : Array Tile -> Robot -> Progress
