@@ -30,19 +30,48 @@ levels =
     [ { name = "Starter Level"
       , description = "Allow all robots to get safely from the start to the end"
       , size = 3
-      , criteria = always Passed
+      , criteria =
+            \_ result ->
+                case result of
+                    Passed _ ->
+                        True
+
+                    Failed ->
+                        False
       }
     , { name = "Checking ID"
       , description = "Allow only robots whose codes start with Red"
       , size = 4
       , criteria =
-            \robot ->
+            \robot result ->
                 case List.head robot.codes of
                     Just Red ->
-                        Passed
+                        case result of
+                            Passed _ ->
+                                True
+
+                            Failed ->
+                                False
 
                     _ ->
-                        Failed
+                        case result of
+                            Failed ->
+                                True
+
+                            Passed _ ->
+                                False
+      }
+    , { name = "Empty Your Pockets"
+      , description = "Clear all the colors from each robot before letting them through the end"
+      , size = 4
+      , criteria =
+            \_ result ->
+                case result of
+                    Passed [] ->
+                        True
+
+                    _ ->
+                        False
       }
     ]
 
@@ -417,7 +446,7 @@ loadLevel maybeLevel =
     let
         level =
             Maybe.withDefault
-                (Level "" "" 0 (always Failed))
+                (Level "" "" 0 (always (always False)))
                 maybeLevel
     in
     { mousePos = Position 0 0
@@ -433,7 +462,7 @@ loadLevel maybeLevel =
 
 
 type alias Criteria =
-    Robot -> Result
+    Robot -> Result -> Bool
 
 
 type Code
@@ -449,7 +478,7 @@ type alias Robot =
 
 
 type Result
-    = Passed
+    = Passed (List Code)
     | Failed
 
 
@@ -484,7 +513,7 @@ checkSolution level solution robots =
                 positionedBot =
                     { robot | position = begin }
             in
-            if simulate solution positionedBot == level.criteria positionedBot then
+            if level.criteria positionedBot (simulate solution positionedBot) then
                 checkSolution level solution rest
 
             else
@@ -534,7 +563,7 @@ checkSafety tiles robot =
     in
     case Array.get robot.position tiles of
         Just End ->
-            Finished Passed
+            Finished (Passed robot.codes)
 
         Just Empty ->
             Finished Failed
