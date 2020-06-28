@@ -472,7 +472,7 @@ type Code
 
 type alias Robot =
     { position : Int
-    , memories : List Int
+    , memories : List ( Int, List Code )
     , codes : List Code
     }
 
@@ -529,7 +529,11 @@ simulate tiles robot =
         Working tile ->
             List.head robot.codes
                 |> getDirection tile
-                |> move tiles { robot | codes = updateCodes tile robot.codes }
+                |> move tiles
+                    { robot
+                        | codes = updateCodes tile robot.codes
+                        , memories = remember robot
+                    }
                 |> Maybe.map (simulate tiles)
                 |> Maybe.withDefault Failed
 
@@ -559,7 +563,7 @@ checkSafety : Array Tile -> Robot -> Progress
 checkSafety tiles robot =
     let
         dejavu =
-            List.member robot.position robot.memories
+            List.member ( robot.position, robot.codes ) robot.memories
     in
     case Array.get robot.position tiles of
         Just End ->
@@ -597,6 +601,11 @@ updateCodes tile codes =
             codes
 
 
+remember : Robot -> List ( Int, List Code )
+remember robot =
+    ( robot.position, robot.codes ) :: robot.memories
+
+
 move : Array Tile -> Robot -> Direction -> Maybe Robot
 move tiles robot direction =
     let
@@ -607,10 +616,7 @@ move tiles robot direction =
         Up ->
             if (robot.position - size) >= 0 then
                 Just
-                    { robot
-                        | position = robot.position - size
-                        , memories = robot.position :: robot.memories
-                    }
+                    { robot | position = robot.position - size }
 
             else
                 Nothing
@@ -618,10 +624,7 @@ move tiles robot direction =
         Down ->
             if (robot.position + size) < Array.length tiles then
                 Just
-                    { robot
-                        | position = robot.position + size
-                        , memories = robot.position :: robot.memories
-                    }
+                    { robot | position = robot.position + size }
 
             else
                 Nothing
@@ -629,10 +632,7 @@ move tiles robot direction =
         Left ->
             if modBy size robot.position /= 0 then
                 Just
-                    { robot
-                        | position = robot.position - 1
-                        , memories = robot.position :: robot.memories
-                    }
+                    { robot | position = robot.position - 1 }
 
             else
                 Nothing
@@ -640,10 +640,7 @@ move tiles robot direction =
         Right ->
             if modBy size (robot.position + 1) /= 0 then
                 Just
-                    { robot
-                        | position = robot.position + 1
-                        , memories = robot.position :: robot.memories
-                    }
+                    { robot | position = robot.position + 1 }
 
             else
                 Nothing
