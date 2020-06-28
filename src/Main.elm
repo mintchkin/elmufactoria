@@ -9,6 +9,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as E
 import Element.Font as Font
+import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as D
@@ -28,7 +29,7 @@ levels : List Level
 levels =
     [ { name = "Starter Level"
       , description = "Allow all robots to get safely from the start to the end"
-      , size = 7
+      , size = 5
       , criteria = always Passed
       }
     , { name = "Checking ID"
@@ -135,6 +136,7 @@ type Msg
     | SetDragging Tile
     | SetGridTile Int
     | SetDirection (Maybe Direction)
+    | LoadLevel Level
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -184,6 +186,9 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+        LoadLevel level ->
+            ( loadLevel (Just level), Cmd.none )
 
 
 
@@ -319,12 +324,37 @@ viewSuccessIndicator model =
         none
 
 
+viewLevelSelect : Element Msg
+viewLevelSelect =
+    let
+        levelButton number level =
+            Input.button
+                [ width (px 50)
+                , height (px 50)
+                , Border.color (rgb 0 0 0)
+                , Border.width 2
+                , Font.center
+                ]
+                { onPress = Just (LoadLevel level)
+                , label = text <| String.fromInt (number + 1)
+                }
+    in
+    El.wrappedRow
+        [ width fill, spacing 10 ]
+        (List.indexedMap levelButton levels)
+
+
 view : Model -> Html Msg
 view model =
     El.layout [ width fill, height fill ]
         (El.column
             [ centerX, centerY, spacing 20 ]
-            [ El.paragraph
+            [ El.column
+                [ spacing 10, padding 10, Font.bold, Font.size 25 ]
+                [ text "Level Select:"
+                , viewLevelSelect
+                ]
+            , El.paragraph
                 [ Font.center, Font.bold, Font.size 40 ]
                 [ text model.level.name ]
             , El.row
