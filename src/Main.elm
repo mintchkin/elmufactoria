@@ -13,6 +13,7 @@ import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as D
+import Level as Level exposing (Code(..), Level, Result(..))
 
 
 main : Program () Model Msg
@@ -25,57 +26,6 @@ main =
         }
 
 
-levels : List Level
-levels =
-    [ { name = "Starter Level"
-      , description = "Allow all robots to get safely from the start to the end"
-      , size = 3
-      , criteria =
-            \_ result ->
-                case result of
-                    Passed _ ->
-                        True
-
-                    Failed ->
-                        False
-      }
-    , { name = "Checking ID"
-      , description = "Allow only robots whose codes start with Red"
-      , size = 4
-      , criteria =
-            \robot result ->
-                case List.head robot.codes of
-                    Just Red ->
-                        case result of
-                            Passed _ ->
-                                True
-
-                            Failed ->
-                                False
-
-                    _ ->
-                        case result of
-                            Failed ->
-                                True
-
-                            Passed _ ->
-                                False
-      }
-    , { name = "Empty Your Pockets"
-      , description = "Clear all the colors from each robot before letting them through the end"
-      , size = 4
-      , criteria =
-            \_ result ->
-                case result of
-                    Passed [] ->
-                        True
-
-                    _ ->
-                        False
-      }
-    ]
-
-
 
 -- MODEL
 
@@ -86,14 +36,6 @@ type alias Model =
     , grid : Array Tile
     , level : Level
     , success : Bool
-    }
-
-
-type alias Level =
-    { name : String
-    , description : String
-    , size : Int
-    , criteria : Criteria
     }
 
 
@@ -122,7 +64,7 @@ initBoard size =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( loadLevel <| List.head levels
+    ( loadLevel Level.first
     , Cmd.none
     )
 
@@ -214,7 +156,7 @@ update msg model =
                     ( model, Cmd.none )
 
         LoadLevel level ->
-            ( loadLevel (Just level), Cmd.none )
+            ( loadLevel level, Cmd.none )
 
 
 
@@ -367,7 +309,7 @@ viewLevelSelect =
     in
     El.wrappedRow
         [ width fill, spacing 10 ]
-        (List.indexedMap levelButton levels)
+        (List.indexedMap levelButton Level.list)
 
 
 view : Model -> Html Msg
@@ -441,14 +383,8 @@ toRotation direction =
             turns 0.75
 
 
-loadLevel : Maybe Level -> Model
-loadLevel maybeLevel =
-    let
-        level =
-            Maybe.withDefault
-                (Level "" "" 0 (always (always False)))
-                maybeLevel
-    in
+loadLevel : Level -> Model
+loadLevel level =
     { mousePos = Position 0 0
     , dragging = Empty
     , grid = initBoard level.size
@@ -461,25 +397,11 @@ loadLevel maybeLevel =
 -- SOLUTIONS
 
 
-type alias Criteria =
-    Robot -> Result -> Bool
-
-
-type Code
-    = Red
-    | Blue
-
-
 type alias Robot =
     { position : Int
     , memories : List ( Int, List Code )
     , codes : List Code
     }
-
-
-type Result
-    = Passed (List Code)
-    | Failed
 
 
 type Progress
@@ -513,7 +435,7 @@ checkSolution level solution robots =
                 positionedBot =
                     { robot | position = begin }
             in
-            if level.criteria positionedBot (simulate solution positionedBot) then
+            if level.criteria robot.codes (simulate solution positionedBot) then
                 checkSolution level solution rest
 
             else
