@@ -13,7 +13,7 @@ import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as D
-import Level as Level exposing (Code(..), Level, Result(..))
+import Level as Level exposing (Code(..), Level, Outcome(..))
 
 
 main : Program () Model Msg
@@ -405,7 +405,7 @@ type alias Robot =
 
 
 type Progress
-    = Finished Result
+    = Finished Outcome
     | Working Tile
 
 
@@ -442,7 +442,7 @@ checkSolution level solution robots =
                 False
 
 
-simulate : Array Tile -> Robot -> Result
+simulate : Array Tile -> Robot -> Outcome
 simulate tiles robot =
     case checkSafety tiles robot of
         Finished result ->

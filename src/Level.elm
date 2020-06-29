@@ -1,4 +1,4 @@
-module Level exposing (Code(..), Level, Result(..), first, list)
+module Level exposing (Code(..), Level, Outcome(..), first, list)
 
 
 type alias Level =
@@ -10,7 +10,7 @@ type alias Level =
 
 
 type alias Criteria =
-    List Code -> Result -> Bool
+    List Code -> Outcome -> Bool
 
 
 type Code
@@ -18,7 +18,7 @@ type Code
     | Blue
 
 
-type Result
+type Outcome
     = Passed (List Code)
     | Failed
 
@@ -29,8 +29,8 @@ first =
     , description = "Allow all robots to get safely from the start to the end"
     , size = 3
     , criteria =
-        \_ result ->
-            case result of
+        \_ outcome ->
+            case outcome of
                 Passed _ ->
                     True
 
@@ -46,10 +46,10 @@ list =
       , description = "Allow only robots whose codes start with Red"
       , size = 4
       , criteria =
-            \initial result ->
+            \initial outcome ->
                 case List.head initial of
                     Just Red ->
-                        case result of
+                        case outcome of
                             Passed _ ->
                                 True
 
@@ -57,7 +57,7 @@ list =
                                 False
 
                     _ ->
-                        case result of
+                        case outcome of
                             Failed ->
                                 True
 
@@ -68,8 +68,8 @@ list =
       , description = "Clear all the colors from each robot before letting them through the end"
       , size = 4
       , criteria =
-            \_ result ->
-                case result of
+            \_ outcome ->
+                case outcome of
                     Passed [] ->
                         True
 
