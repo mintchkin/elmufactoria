@@ -14,6 +14,7 @@ import Html exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as D
 import Level as Level exposing (Code(..), Level, Outcome(..))
+import Time
 
 
 main : Program () Model Msg
@@ -36,6 +37,7 @@ type alias Model =
     , grid : Array Tile
     , level : Level
     , success : Bool
+    , replayBots : List Robot
     }
 
 
@@ -77,10 +79,13 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.dragging of
         Empty ->
-            BE.onMouseDown <|
-                D.map2 SetPosition
-                    (D.field "pageX" D.float)
-                    (D.field "pageY" D.float)
+            Sub.batch
+                [ BE.onMouseDown <|
+                    D.map2 SetPosition
+                        (D.field "pageX" D.float)
+                        (D.field "pageY" D.float)
+                , Time.every 1000 (\_ -> StepReplay)
+                ]
 
         _ ->
             Sub.batch
@@ -105,6 +110,8 @@ type Msg
     | SetGridTile Int
     | SetDirection (Maybe Direction)
     | LoadLevel Level
+    | Replay
+    | StepReplay
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -157,6 +164,37 @@ update msg model =
 
         LoadLevel level ->
             ( loadLevel level, Cmd.none )
+
+        Replay ->
+            case model.replayBots of
+                [] ->
+                    let
+                        simulations =
+                            List.map
+                                (\robot ->
+                                    simulate model.grid { robot | position = model.level.size - 1 }
+                                )
+                                testRobots
+                    in
+                    ( { model | replayBots = List.map (\( _, robot ) -> reverseBot robot) simulations }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( { model | replayBots = [] }, Cmd.none )
+
+        StepReplay ->
+            case model.replayBots of
+                robot :: rest ->
+                    case robot.memories of
+                        [] ->
+                            ( { model | replayBots = rest }, Cmd.none )
+
+                        ( position, codes ) :: memories ->
+                            ( { model | replayBots = Robot position memories codes :: rest }, Cmd.none )
+
+                [] ->
+                    ( model, Cmd.none )
 
 
 
@@ -252,15 +290,39 @@ viewBrush model =
                 (viewBox [] tile)
 
 
-viewGridRow : List ( Int, Tile ) -> Element Msg
-viewGridRow indexedTiles =
+viewBot : Element Msg
+viewBot =
     let
-        viewCell ( index, tile ) =
-            viewBox [ E.onClick (SetGridTile index) ] tile
+        eye =
+            el [ Background.color (rgb 0 0 0), width (px 4), height (px 4) ] none
     in
-    indexedTiles
-        |> List.map viewCell
-        |> row []
+    El.el
+        [ centerX
+        , centerY
+        , width (px 30)
+        , height (px 25)
+        , Background.color (rgb 0.75 0.75 0.75)
+        , padding 8
+        ]
+        (El.row
+            [ width fill, centerX, spaceEvenly ]
+            [ eye, eye ]
+        )
+
+
+viewGridCell : Model -> Int -> Tile -> Element Msg
+viewGridCell model index tile =
+    let
+        addRobot =
+            List.head model.replayBots
+                |> Maybe.map (\robot -> robot.position == index)
+                |> Maybe.withDefault False
+    in
+    if addRobot then
+        viewBox [ E.onClick (SetGridTile index), inFront viewBot ] tile
+
+    else
+        viewBox [ E.onClick (SetGridTile index) ] tile
 
 
 viewGrid : Model -> Element Msg
@@ -268,9 +330,10 @@ viewGrid model =
     El.column
         []
         (model.grid
-            |> Array.toIndexedList
+            |> Array.indexedMap (viewGridCell model)
+            |> Array.toList
             |> squareUp
-            |> List.map viewGridRow
+            |> List.map (row [])
         )
 
 
@@ -330,6 +393,7 @@ view model =
                 [ viewPalette
                 , viewGrid model
                 , viewSuccessIndicator model
+                , el [ E.onClick Replay ] (text "Replay")
                 ]
             , El.paragraph
                 [ Font.center ]
@@ -390,11 +454,12 @@ loadLevel level =
     , grid = initBoard level.size
     , level = level
     , success = False
+    , replayBots = []
     }
 
 
 
--- SOLUTIONS
+-- ROBOTS
 
 
 type alias Robot =
@@ -435,29 +500,29 @@ checkSolution level solution robots =
                 positionedBot =
                     { robot | position = begin }
             in
-            if level.criteria robot.codes (simulate solution positionedBot) then
+            if level.criteria robot.codes <| Tuple.first (simulate solution positionedBot) then
                 checkSolution level solution rest
 
             else
                 False
 
 
-simulate : Array Tile -> Robot -> Outcome
+simulate : Array Tile -> Robot -> ( Outcome, Robot )
 simulate tiles robot =
     case checkSafety tiles robot of
         Finished result ->
-            result
+            ( result, robot )
 
         Working tile ->
+            let
+                nextBot =
+                    { robot | codes = updateCodes tile robot.codes, memories = remember robot }
+            in
             List.head robot.codes
                 |> getDirection tile
-                |> move tiles
-                    { robot
-                        | codes = updateCodes tile robot.codes
-                        , memories = remember robot
-                    }
+                |> move tiles nextBot
                 |> Maybe.map (simulate tiles)
-                |> Maybe.withDefault Failed
+                |> Maybe.withDefault ( Failed, robot )
 
 
 getDirection : Tile -> Maybe Code -> Direction
@@ -566,3 +631,13 @@ move tiles robot direction =
 
             else
                 Nothing
+
+
+reverseBot : Robot -> Robot
+reverseBot robot =
+    case List.reverse robot.memories of
+        [] ->
+            robot
+
+        ( position, codes ) :: tail ->
+            Robot position (tail ++ [ ( robot.position, robot.codes ) ]) codes
