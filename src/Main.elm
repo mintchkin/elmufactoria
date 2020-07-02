@@ -142,7 +142,7 @@ update msg model =
                     in
                     ( { model
                         | grid = newGrid
-                        , success = checkSolution model.level newGrid testRobots
+                        , success = List.all (testSolution model.level newGrid) testCodes
                       }
                     , Cmd.none
                     )
@@ -169,14 +169,10 @@ update msg model =
             case model.replayBots of
                 [] ->
                     let
-                        simulations =
-                            List.map
-                                (\robot ->
-                                    simulate model.grid { robot | position = model.level.size - 1 }
-                                )
-                                testRobots
+                        start =
+                            model.level.size - 1
                     in
-                    ( { model | replayBots = List.map (\( _, robot ) -> reverseBot robot) simulations }
+                    ( { model | replayBots = List.map (Robot [] start) testCodes }
                     , Cmd.none
                     )
 
@@ -186,12 +182,12 @@ update msg model =
         StepReplay ->
             case model.replayBots of
                 robot :: rest ->
-                    case robot.memories of
-                        [] ->
+                    case advance model.grid robot of
+                        Finished _ ->
                             ( { model | replayBots = rest }, Cmd.none )
 
-                        ( position, codes ) :: memories ->
-                            ( { model | replayBots = Robot position memories codes :: rest }, Cmd.none )
+                        Working bot ->
+                            ( { model | replayBots = bot :: rest }, Cmd.none )
 
                 [] ->
                     ( model, Cmd.none )
@@ -463,87 +459,86 @@ loadLevel level =
 
 
 type alias Robot =
-    { position : Int
-    , memories : List ( Int, List Code )
+    { memories : List ( Int, List Code )
+    , position : Int
     , codes : List Code
     }
 
 
 type Progress
     = Finished Outcome
-    | Working Tile
+    | Working Robot
 
 
-testRobots : List Robot
-testRobots =
-    [ Robot 0 [] []
-    , Robot 0 [] [ Red, Blue ]
-    , Robot 0 [] [ Blue, Red ]
+testCodes : List (List Code)
+testCodes =
+    [ []
+    , [ Red, Blue ]
+    , [ Blue, Red ]
     ]
 
 
-checkSolution : Level -> Array Tile -> List Robot -> Bool
-checkSolution level solution robots =
+testSolution : Level -> Array Tile -> List Code -> Bool
+testSolution level solution codes =
     let
         size =
             round (sqrt (toFloat (Array.length solution)))
 
         begin =
             round (toFloat size / 2) - 1
+
+        robot =
+            Robot [] begin codes
     in
-    case robots of
-        [] ->
-            True
-
-        robot :: rest ->
-            let
-                positionedBot =
-                    { robot | position = begin }
-            in
-            if level.criteria robot.codes <| Tuple.first (simulate solution positionedBot) then
-                checkSolution level solution rest
-
-            else
-                False
+    level.criteria codes (simulate solution robot)
 
 
-simulate : Array Tile -> Robot -> ( Outcome, Robot )
+simulate : Array Tile -> Robot -> Outcome
 simulate tiles robot =
-    case checkSafety tiles robot of
-        Finished result ->
-            ( result, robot )
+    case advance tiles robot of
+        Working nextBot ->
+            simulate tiles nextBot
 
-        Working tile ->
+        Finished outcome ->
+            outcome
+
+
+advance : Array Tile -> Robot -> Progress
+advance tiles robot =
+    case getDirection tiles robot of
+        Just direction ->
             let
-                nextBot =
-                    { robot | codes = updateCodes tile robot.codes, memories = remember robot }
+                updateBot =
+                    remember >> updateCodes tiles >> move tiles direction
             in
-            List.head robot.codes
-                |> getDirection tile
-                |> move tiles nextBot
-                |> Maybe.map (simulate tiles)
-                |> Maybe.withDefault ( Failed, robot )
+            chainProgress updateBot (checkSafety tiles robot)
+
+        Nothing ->
+            Finished Failed
 
 
-getDirection : Tile -> Maybe Code -> Direction
-getDirection tile maybeCode =
-    case tile of
-        RBSplitter direction ->
-            case maybeCode of
-                Just Red ->
-                    Direction.shiftClockwise direction
+getDirection : Array Tile -> Robot -> Maybe Direction
+getDirection tiles robot =
+    case Array.get robot.position tiles of
+        Just Begin ->
+            Just Down
 
-                Just Blue ->
-                    Direction.flip <| Direction.shiftClockwise direction
+        Just (Track direction) ->
+            Just direction
 
-                Nothing ->
-                    direction
+        Just (RBSplitter direction) ->
+            case robot.codes of
+                Red :: _ ->
+                    Just (Direction.shiftClockwise direction)
 
-        Track direction ->
-            direction
+                Blue :: _ ->
+                    Just (Direction.flip <| Direction.shiftClockwise direction)
+
+                _ ->
+                    Just direction
 
         _ ->
-            Down
+            Nothing
 
 
 checkSafety : Array Tile -> Robot -> Progress
@@ -562,39 +557,49 @@ checkSafety tiles robot =
         Nothing ->
             Finished Failed
 
-        Just tile ->
+        Just _ ->
             if dejavu then
                 Finished Failed
 
             else
-                Working tile
+                Working robot
 
 
-updateCodes : Tile -> List Code -> List Code
-updateCodes tile codes =
-    case tile of
-        RBSplitter _ ->
-            case codes of
+remember : Robot -> Robot
+remember robot =
+    { robot | memories = ( robot.position, robot.codes ) :: robot.memories }
+
+
+updateCodes : Array Tile -> Robot -> Robot
+updateCodes tiles robot =
+    case Array.get robot.position tiles of
+        Just (RBSplitter _) ->
+            case robot.codes of
                 Red :: rest ->
-                    rest
+                    { robot | codes = rest }
 
                 Blue :: rest ->
-                    rest
+                    { robot | codes = rest }
 
                 _ ->
-                    codes
+                    robot
 
         _ ->
-            codes
+            robot
 
 
-remember : Robot -> List ( Int, List Code )
-remember robot =
-    ( robot.position, robot.codes ) :: robot.memories
+chainProgress : (Robot -> Progress) -> Progress -> Progress
+chainProgress callback result =
+    case result of
+        Working robot ->
+            callback robot
+
+        finished ->
+            finished
 
 
-move : Array Tile -> Robot -> Direction -> Maybe Robot
-move tiles robot direction =
+move : Array Tile -> Direction -> Robot -> Progress
+move tiles direction robot =
     let
         size =
             round (sqrt (toFloat (Array.length tiles)))
@@ -602,42 +607,32 @@ move tiles robot direction =
     case direction of
         Up ->
             if (robot.position - size) >= 0 then
-                Just
+                Working
                     { robot | position = robot.position - size }
 
             else
-                Nothing
+                Finished Failed
 
         Down ->
             if (robot.position + size) < Array.length tiles then
-                Just
+                Working
                     { robot | position = robot.position + size }
 
             else
-                Nothing
+                Finished Failed
 
         Left ->
             if modBy size robot.position /= 0 then
-                Just
+                Working
                     { robot | position = robot.position - 1 }
 
             else
-                Nothing
+                Finished Failed
 
         Right ->
             if modBy size (robot.position + 1) /= 0 then
-                Just
+                Working
                     { robot | position = robot.position + 1 }
 
             else
-                Nothing
-
-
-reverseBot : Robot -> Robot
-reverseBot robot =
-    case List.reverse robot.memories of
-        [] ->
-            robot
-
-        ( position, codes ) :: tail ->
-            Robot position (tail ++ [ ( robot.position, robot.codes ) ]) codes
+                Finished Failed
