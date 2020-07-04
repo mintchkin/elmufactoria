@@ -213,7 +213,7 @@ viewTile tile =
             El.row
                 [ width fill
                 , height fill
-                , rotate (toRotation direction)
+                , rotate (Direction.toRotation direction)
                 ]
                 [ el
                     [ centerX
@@ -233,7 +233,7 @@ viewTile tile =
             El.row
                 [ width fill
                 , height fill
-                , rotate (toRotation direction)
+                , rotate (Direction.toRotation direction)
                 ]
                 [ indicator [ Background.color (rgb 1 0 0), alignLeft ]
                 , indicator [ Background.color (rgb 0.3 0.3 0.3), centerX, alignBottom ]
@@ -284,26 +284,6 @@ viewBrush model =
                 , htmlAttribute <| HA.style "pointer-events" "none"
                 ]
                 (viewBox [] tile)
-
-
-viewBot : Element Msg
-viewBot =
-    let
-        eye =
-            el [ Background.color (rgb 0 0 0), width (px 4), height (px 4) ] none
-    in
-    El.el
-        [ centerX
-        , centerY
-        , width (px 30)
-        , height (px 25)
-        , Background.color (rgb 0.75 0.75 0.75)
-        , padding 8
-        ]
-        (El.row
-            [ width fill, centerX, spaceEvenly ]
-            [ eye, eye ]
-        )
 
 
 viewGridCell : Model -> Int -> Tile -> Element Msg
@@ -427,22 +407,6 @@ squareUp list =
     chunk (getSize list) list
 
 
-toRotation : Direction -> Float
-toRotation direction =
-    case direction of
-        Down ->
-            turns 0
-
-        Left ->
-            turns 0.25
-
-        Up ->
-            turns 0.5
-
-        Right ->
-            turns 0.75
-
-
 loadLevel : Level -> Model
 loadLevel level =
     { mousePos = Position 0 0
@@ -505,28 +469,35 @@ simulate tiles robot =
 
 advance : Array Tile -> Robot -> Progress
 advance tiles robot =
-    case getDirection tiles robot of
+    let
+        maybeDirection =
+            Array.get robot.position tiles |> Maybe.andThen (getDirection robot)
+    in
+    case maybeDirection of
         Just direction ->
             let
                 updateBot =
                     remember >> updateCodes tiles >> move tiles direction
             in
-            chainProgress updateBot (checkSafety tiles robot)
+            isFinished tiles robot |> chainProgress updateBot
 
         Nothing ->
             Finished Failed
 
 
-getDirection : Array Tile -> Robot -> Maybe Direction
-getDirection tiles robot =
-    case Array.get robot.position tiles of
-        Just Begin ->
+getDirection : Robot -> Tile -> Maybe Direction
+getDirection robot tile =
+    case tile of
+        Begin ->
             Just Down
 
-        Just (Track direction) ->
+        End ->
+            Just Down
+
+        Track direction ->
             Just direction
 
-        Just (RBSplitter direction) ->
+        RBSplitter direction ->
             case robot.codes of
                 Red :: _ ->
                     Just (Direction.shiftClockwise direction)
@@ -537,12 +508,12 @@ getDirection tiles robot =
                 _ ->
                     Just direction
 
-        _ ->
+        Empty ->
             Nothing
 
 
-checkSafety : Array Tile -> Robot -> Progress
-checkSafety tiles robot =
+isFinished : Array Tile -> Robot -> Progress
+isFinished tiles robot =
     let
         dejavu =
             List.member ( robot.position, robot.codes ) robot.memories
@@ -636,3 +607,23 @@ move tiles direction robot =
 
             else
                 Finished Failed
+
+
+viewBot : Element msg
+viewBot =
+    let
+        eye =
+            el [ Background.color (rgb 0 0 0), width (px 4), height (px 4) ] none
+    in
+    El.el
+        [ centerX
+        , centerY
+        , width (px 30)
+        , height (px 25)
+        , Background.color (rgb 0.75 0.75 0.75)
+        , padding 8
+        ]
+        (El.row
+            [ width fill, centerX, spaceEvenly ]
+            [ eye, eye ]
+        )

@@ -1,4 +1,4 @@
-module Direction exposing (Direction(..), flip, fromKey, shiftClockwise)
+module Direction exposing (Direction(..), flip, fromKey, shiftClockwise, toRotation)
 
 
 type Direction
@@ -57,3 +57,19 @@ fromKey key =
 
         _ ->
             Nothing
+
+
+toRotation : Direction -> Float
+toRotation direction =
+    case direction of
+        Down ->
+            turns 0
+
+        Left ->
+            turns 0.25
+
+        Up ->
+            turns 0.5
+
+        Right ->
+            turns 0.75
