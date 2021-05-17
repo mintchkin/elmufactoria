@@ -94,9 +94,7 @@ subscriptions model =
                         (D.field "pageX" D.float)
                         (D.field "pageY" D.float)
                 , BE.onKeyDown <|
-                    D.map
-                        (SetDirection << Direction.fromKey)
-                        (D.field "key" D.string)
+                    D.map PressKey (D.field "key" D.string)
                 ]
 
 
@@ -108,7 +106,7 @@ type Msg
     = SetPosition Float Float
     | SetDragging Tile
     | SetGridTile Int
-    | SetDirection (Maybe Direction)
+    | PressKey String
     | LoadLevel Level
     | Replay
     | StepReplay
@@ -147,17 +145,24 @@ update msg model =
                     , Cmd.none
                     )
 
-        SetDirection maybeDirection ->
-            let
-                justDirection default =
-                    Maybe.withDefault default maybeDirection
-            in
-            case model.dragging of
-                Track direction ->
-                    ( { model | dragging = Track (justDirection direction) }, Cmd.none )
+        PressKey key ->
+            case ( Direction.fromKey key, key ) of
+                ( _, "Esc" ) ->
+                    ( { model | dragging = Empty }, Cmd.none )
 
-                RBSplitter direction ->
-                    ( { model | dragging = RBSplitter (justDirection direction) }, Cmd.none )
+                ( _, "Escape" ) ->
+                    ( { model | dragging = Empty }, Cmd.none )
+
+                ( Just direction, _ ) ->
+                    case model.dragging of
+                        Track _ ->
+                            ( { model | dragging = Track direction }, Cmd.none )
+
+                        RBSplitter _ ->
+                            ( { model | dragging = RBSplitter direction }, Cmd.none )
+
+                        _ ->
+                            ( model, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
