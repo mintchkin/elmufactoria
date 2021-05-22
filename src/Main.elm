@@ -356,6 +356,55 @@ viewLevelSelect =
         (List.indexedMap levelButton Level.list)
 
 
+
+--- REPLAYING ---
+
+
+playIcon : Element msg
+playIcon =
+    el [ centerX, centerY, Font.size 40 ] (text "▶︎")
+
+
+pauseIcon : Element msg
+pauseIcon =
+    El.row
+        [ width fill, spaceEvenly, padding 10 ]
+        (List.repeat 2 <|
+            el
+                [ width (px 10)
+                , height (px 25)
+                , Background.color (rgb 0 0 0)
+                ]
+                none
+        )
+
+
+viewReplayControls : Model -> Element Msg
+viewReplayControls model =
+    let
+        button =
+            Input.button
+                [ width (px 50)
+                , height (px 50)
+                , Border.color (rgb 0 0 0)
+                , Border.width 2
+                , Font.center
+                ]
+
+        playPauseButton =
+            case model.replayBots of
+                [] ->
+                    button { onPress = Just Replay, label = playIcon }
+
+                _ ->
+                    button { onPress = Just Replay, label = pauseIcon }
+    in
+    El.column
+        [ spacing 10, alignTop ]
+        [ playPauseButton
+        ]
+
+
 view : Model -> Html Msg
 view model =
     El.layout [ width fill, height fill ]
@@ -374,7 +423,7 @@ view model =
                 [ viewPalette
                 , viewGrid model
                 , viewSuccessIndicator model
-                , el [ E.onClick Replay ] (text "Replay")
+                , viewReplayControls model
                 ]
             , El.paragraph
                 [ Font.center ]
