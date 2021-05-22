@@ -33,12 +33,16 @@ main =
 
 type alias Model =
     { mousePos : Position
-    , dragging : Tile
     , grid : Array Tile
     , level : Level
+    , mode : Mode
     , success : Bool
-    , replayBots : List Robot
     }
+
+
+type Mode
+    = Editing Tile
+    | Replaying (List Robot)
 
 
 type Position
@@ -77,8 +81,8 @@ init _ =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.dragging of
-        Empty ->
+    case model.mode of
+        Replaying _ ->
             Sub.batch
                 [ BE.onMouseDown <|
                     D.map2 SetPosition
@@ -87,7 +91,7 @@ subscriptions model =
                 , Time.every 1000 (\_ -> StepReplay)
                 ]
 
-        _ ->
+        Editing _ ->
             Sub.batch
                 [ BE.onMouseMove <|
                     D.map2 SetPosition
@@ -121,80 +125,93 @@ update msg model =
             )
 
         SetDragging tile ->
-            ( { model | dragging = tile }
+            ( { model | mode = Editing tile }
             , Cmd.none
             )
 
         SetGridTile index ->
-            case Array.get index model.grid of
-                Just Begin ->
+            let
+                filterStatic tile =
+                    case tile of
+                        Begin ->
+                            Nothing
+
+                        End ->
+                            Nothing
+
+                        otherwise ->
+                            Just otherwise
+
+                mapTile =
+                    Array.get index model.grid |> Maybe.andThen filterStatic
+            in
+            case ( model.mode, mapTile ) of
+                ( Replaying _, _ ) ->
                     ( model, Cmd.none )
 
-                Just End ->
+                ( _, Nothing ) ->
                     ( model, Cmd.none )
 
-                _ ->
+                ( Editing replacement, _ ) ->
                     let
-                        newGrid =
-                            Array.set index model.dragging model.grid
+                        grid =
+                            Array.set index replacement model.grid
+
+                        success =
+                            List.all (testSolution model.level grid) testCodes
                     in
-                    ( { model
-                        | grid = newGrid
-                        , success = List.all (testSolution model.level newGrid) testCodes
-                      }
-                    , Cmd.none
-                    )
+                    ( { model | grid = grid, success = success }, Cmd.none )
 
         PressKey key ->
-            case ( Direction.fromKey key, key ) of
-                ( _, "Esc" ) ->
-                    ( { model | dragging = Empty }, Cmd.none )
+            case ( model.mode, key ) of
+                ( Replaying _, _ ) ->
+                    ( model, Cmd.none )
 
-                ( _, "Escape" ) ->
-                    ( { model | dragging = Empty }, Cmd.none )
+                ( Editing _, "Esc" ) ->
+                    ( { model | mode = Editing Empty }, Cmd.none )
 
-                ( Just direction, _ ) ->
-                    case model.dragging of
-                        Track _ ->
-                            ( { model | dragging = Track direction }, Cmd.none )
+                ( Editing _, "Escape" ) ->
+                    ( { model | mode = Editing Empty }, Cmd.none )
 
-                        RBSplitter _ ->
-                            ( { model | dragging = RBSplitter direction }, Cmd.none )
+                ( Editing tile, _ ) ->
+                    case ( tile, Direction.fromKey key ) of
+                        ( Track _, Just direction ) ->
+                            ( { model | mode = Editing (Track direction) }, Cmd.none )
+
+                        ( RBSplitter _, Just direction ) ->
+                            ( { model | mode = Editing (RBSplitter direction) }, Cmd.none )
 
                         _ ->
                             ( model, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
 
         LoadLevel level ->
             ( loadLevel level, Cmd.none )
 
         Replay ->
-            case model.replayBots of
-                [] ->
+            case model.mode of
+                Replaying _ ->
+                    ( { model | mode = Editing Empty }, Cmd.none )
+
+                Editing _ ->
                     let
                         start =
                             model.level.size - 1
                     in
-                    ( { model | replayBots = List.map (Robot [] start) testCodes }
+                    ( { model | mode = Replaying (List.map (Robot [] start) testCodes) }
                     , Cmd.none
                     )
 
-                _ ->
-                    ( { model | replayBots = [] }, Cmd.none )
-
         StepReplay ->
-            case model.replayBots of
-                robot :: rest ->
+            case model.mode of
+                Replaying (robot :: rest) ->
                     case advance model.grid robot of
                         Finished _ ->
-                            ( { model | replayBots = rest }, Cmd.none )
+                            ( { model | mode = Replaying rest }, Cmd.none )
 
                         Working bot ->
-                            ( { model | replayBots = bot :: rest }, Cmd.none )
+                            ( { model | mode = Replaying (bot :: rest) }, Cmd.none )
 
-                [] ->
+                _ ->
                     ( model, Cmd.none )
 
 
@@ -277,11 +294,11 @@ viewBrush model =
         (Position xpos ypos) =
             model.mousePos
     in
-    case model.dragging of
-        Empty ->
+    case model.mode of
+        Editing Empty ->
             none
 
-        tile ->
+        Editing tile ->
             el
                 [ htmlAttribute <| HA.style "position" "fixed"
                 , htmlAttribute <| HA.style "left" (toPixels (xpos - 25))
@@ -290,20 +307,22 @@ viewBrush model =
                 ]
                 (viewBox [] tile)
 
+        Replaying _ ->
+            none
+
 
 viewGridCell : Model -> Int -> Tile -> Element Msg
 viewGridCell model index tile =
-    let
-        addRobot =
-            List.head model.replayBots
-                |> Maybe.map (\robot -> robot.position == index)
-                |> Maybe.withDefault False
-    in
-    if addRobot then
-        viewBox [ E.onClick (SetGridTile index), inFront viewBot ] tile
+    case model.mode of
+        Replaying (robot :: _) ->
+            if robot.position == index then
+                viewBox [ E.onClick (SetGridTile index), inFront viewBot ] tile
 
-    else
-        viewBox [ E.onClick (SetGridTile index) ] tile
+            else
+                viewBox [ E.onClick (SetGridTile index) ] tile
+
+        _ ->
+            viewBox [ E.onClick (SetGridTile index) ] tile
 
 
 viewGrid : Model -> Element Msg
@@ -392,17 +411,16 @@ viewReplayControls model =
                 ]
 
         playPauseButton =
-            case model.replayBots of
-                [] ->
+            case model.mode of
+                Editing _ ->
                     button { onPress = Just Replay, label = playIcon }
 
-                _ ->
+                Replaying _ ->
                     button { onPress = Just Replay, label = pauseIcon }
     in
     El.column
         [ spacing 10, alignTop ]
-        [ playPauseButton
-        ]
+        [ playPauseButton ]
 
 
 view : Model -> Html Msg
@@ -464,11 +482,10 @@ squareUp list =
 loadLevel : Level -> Model
 loadLevel level =
     { mousePos = Position 0 0
-    , dragging = Empty
+    , mode = Editing Empty
     , grid = initBoard level.size
     , level = level
     , success = False
-    , replayBots = []
     }
 
 
