@@ -628,39 +628,26 @@ move tiles direction robot =
     let
         size =
             round (sqrt (toFloat (Array.length tiles)))
+
+        unless check position =
+            if not (check position) then
+                Working { robot | position = position }
+
+            else
+                Finished Failed
     in
     case direction of
         Up ->
-            if (robot.position - size) >= 0 then
-                Working
-                    { robot | position = robot.position - size }
-
-            else
-                Finished Failed
+            robot.position - size |> unless (\p -> p < 0)
 
         Down ->
-            if (robot.position + size) < Array.length tiles then
-                Working
-                    { robot | position = robot.position + size }
-
-            else
-                Finished Failed
+            robot.position + size |> unless (\p -> p >= Array.length tiles)
 
         Left ->
-            if modBy size robot.position /= 0 then
-                Working
-                    { robot | position = robot.position - 1 }
-
-            else
-                Finished Failed
+            robot.position - 1 |> unless (\p -> modBy size p == (size - 1))
 
         Right ->
-            if modBy size (robot.position + 1) /= 0 then
-                Working
-                    { robot | position = robot.position + 1 }
-
-            else
-                Finished Failed
+            robot.position + 1 |> unless (\p -> modBy size p == 0)
 
 
 viewBot : Element msg
