@@ -47,22 +47,15 @@ list =
       , size = 4
       , criteria =
             \initial outcome ->
-                case List.head initial of
-                    Just Red ->
-                        case outcome of
-                            Passed _ ->
-                                True
+                case ( initial, outcome ) of
+                    ( Red :: _, Passed _ ) ->
+                        True
 
-                            Failed ->
-                                False
+                    ( _, Passed _ ) ->
+                        False
 
-                    _ ->
-                        case outcome of
-                            Failed ->
-                                True
-
-                            Passed _ ->
-                                False
+                    ( _, Failed ) ->
+                        True
       }
     , { name = "Empty Your Pockets"
       , description = "Clear all the colors from each robot before letting them through the end"
