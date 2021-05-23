@@ -6,6 +6,7 @@ type alias Level =
     , description : String
     , size : Int
     , criteria : Criteria
+    , tests : List (List Code)
     }
 
 
@@ -36,6 +37,11 @@ first =
 
                 Failed ->
                     False
+    , tests =
+        [ []
+        , [ Red ]
+        , [ Blue ]
+        ]
     }
 
 
@@ -56,6 +62,12 @@ list =
 
                     ( _, Failed ) ->
                         True
+      , tests =
+            [ []
+            , [ Red, Red, Blue ]
+            , [ Red, Blue, Red ]
+            , [ Blue ]
+            ]
       }
     , { name = "Empty Your Pockets"
       , description = "Clear all the colors from each robot before letting them through the end"
@@ -68,5 +80,11 @@ list =
 
                     _ ->
                         False
+      , tests =
+            [ []
+            , [ Blue ]
+            , [ Red, Blue, Red, Blue ]
+            , List.concat <| List.repeat 10 [ Red, Blue ]
+            ]
       }
     ]

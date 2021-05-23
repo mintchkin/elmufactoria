@@ -158,7 +158,7 @@ update msg model =
                             Array.set index replacement model.grid
 
                         success =
-                            List.all (testSolution model.level grid) testCodes
+                            testSolution model.level grid
                     in
                     ( { model | grid = grid, success = success }, Cmd.none )
 
@@ -193,11 +193,7 @@ update msg model =
                     ( { model | mode = Editing Empty }, Cmd.none )
 
                 Editing _ ->
-                    let
-                        start =
-                            model.level.size - 1
-                    in
-                    ( { model | mode = Replaying (List.map (Robot [] start) testCodes) }
+                    ( { model | mode = Replaying (initRobots model.level) }
                     , Cmd.none
                     )
 
@@ -505,27 +501,18 @@ type Progress
     | Working Robot
 
 
-testCodes : List (List Code)
-testCodes =
-    [ []
-    , [ Red, Blue ]
-    , [ Blue, Red ]
-    ]
+initRobots : Level -> List Robot
+initRobots level =
+    List.map (Robot [] (level.size - 1)) level.tests
 
 
-testSolution : Level -> Array Tile -> List Code -> Bool
-testSolution level solution codes =
+testSolution : Level -> Array Tile -> Bool
+testSolution { criteria, tests, size } solution =
     let
-        size =
-            round (sqrt (toFloat (Array.length solution)))
-
-        begin =
-            round (toFloat size / 2) - 1
-
-        robot =
-            Robot [] begin codes
+        initRobot =
+            Robot [] (size - 1)
     in
-    level.criteria codes (simulate solution robot)
+    List.all (\codes -> criteria codes <| simulate solution (initRobot codes)) tests
 
 
 simulate : Array Tile -> Robot -> Outcome
