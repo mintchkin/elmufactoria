@@ -107,53 +107,79 @@ subscriptions model =
 
 
 type Msg
-    = SetPosition Float Float
-    | SetDragging Tile
-    | SetGridTile Int
-    | PressKey String
-    | LoadLevel Level
+    = LoadLevel Level
+    | Edit Tile
     | Replay
+    | PressKey String
+    | SetPosition Float Float
+    | SetGridTile Int
     | StepReplay
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        LoadLevel level ->
+            ( loadLevel level, Cmd.none )
+
+        Edit tile ->
+            ( { model | mode = Editing tile }
+            , Cmd.none
+            )
+
+        Replay ->
+            ( { model | mode = Replaying (initRobots model.level) }
+            , Cmd.none
+            )
+
+        PressKey key ->
+            case model.mode of
+                Replaying _ ->
+                    ( model, Cmd.none )
+
+                Editing tile ->
+                    case key of
+                        "Esc" ->
+                            ( { model | mode = Editing Empty }, Cmd.none )
+
+                        "Escape" ->
+                            ( { model | mode = Editing Empty }, Cmd.none )
+
+                        _ ->
+                            case ( tile, Direction.fromKey key ) of
+                                ( Track _, Just direction ) ->
+                                    ( { model | mode = Editing (Track direction) }, Cmd.none )
+
+                                ( RBSplitter _, Just direction ) ->
+                                    ( { model | mode = Editing (RBSplitter direction) }, Cmd.none )
+
+                                _ ->
+                                    ( model, Cmd.none )
+
         SetPosition x y ->
             ( { model | mousePos = Position x y }
             , Cmd.none
             )
 
-        SetDragging tile ->
-            ( { model | mode = Editing tile }
-            , Cmd.none
-            )
-
+        -- EDITING ONLY
         SetGridTile index ->
-            let
-                filterStatic tile =
-                    case tile of
-                        Begin ->
-                            Nothing
-
-                        End ->
-                            Nothing
-
-                        otherwise ->
-                            Just otherwise
-
-                mapTile =
-                    Array.get index model.grid |> Maybe.andThen filterStatic
-            in
-            case ( model.mode, mapTile ) of
-                ( Replaying _, _ ) ->
+            case model.mode of
+                Replaying _ ->
                     ( model, Cmd.none )
 
-                ( _, Nothing ) ->
-                    ( model, Cmd.none )
-
-                ( Editing replacement, _ ) ->
+                Editing tile ->
                     let
+                        replacement =
+                            case Array.get index model.grid of
+                                Just Begin ->
+                                    Begin
+
+                                Just End ->
+                                    End
+
+                                _ ->
+                                    tile
+
                         grid =
                             Array.set index replacement model.grid
 
@@ -162,43 +188,15 @@ update msg model =
                     in
                     ( { model | grid = grid, success = success }, Cmd.none )
 
-        PressKey key ->
-            case ( model.mode, key ) of
-                ( Replaying _, _ ) ->
-                    ( model, Cmd.none )
-
-                ( Editing _, "Esc" ) ->
-                    ( { model | mode = Editing Empty }, Cmd.none )
-
-                ( Editing _, "Escape" ) ->
-                    ( { model | mode = Editing Empty }, Cmd.none )
-
-                ( Editing tile, _ ) ->
-                    case ( tile, Direction.fromKey key ) of
-                        ( Track _, Just direction ) ->
-                            ( { model | mode = Editing (Track direction) }, Cmd.none )
-
-                        ( RBSplitter _, Just direction ) ->
-                            ( { model | mode = Editing (RBSplitter direction) }, Cmd.none )
-
-                        _ ->
-                            ( model, Cmd.none )
-
-        LoadLevel level ->
-            ( loadLevel level, Cmd.none )
-
-        Replay ->
-            case model.mode of
-                Replaying _ ->
-                    ( { model | mode = Editing Empty }, Cmd.none )
-
-                Editing _ ->
-                    ( { model | mode = Replaying (initRobots model.level) }
-                    , Cmd.none
-                    )
-
+        -- REPLAYING ONLY
         StepReplay ->
             case model.mode of
+                Editing _ ->
+                    ( model, Cmd.none )
+
+                Replaying [] ->
+                    ( model, Cmd.none )
+
                 Replaying (robot :: rest) ->
                     case advance model.grid robot of
                         Finished _ ->
@@ -206,9 +204,6 @@ update msg model =
 
                         Working bot ->
                             ( { model | mode = Replaying (bot :: rest) }, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
 
 
 
@@ -278,9 +273,9 @@ viewPalette =
         [ El.spacing 10
         , El.alignTop
         ]
-        [ viewBox [ E.onClick (SetDragging (Track Down)) ] (Track Down)
-        , viewBox [ E.onClick (SetDragging (RBSplitter Down)) ] (RBSplitter Down)
-        , viewBox [ E.onClick (SetDragging Empty) ] Empty
+        [ viewBox [ E.onClick (Edit (Track Down)) ] (Track Down)
+        , viewBox [ E.onClick (Edit (RBSplitter Down)) ] (RBSplitter Down)
+        , viewBox [ E.onClick (Edit Empty) ] Empty
         ]
 
 
@@ -312,10 +307,10 @@ viewGridCell model index tile =
     case model.mode of
         Replaying (robot :: _) ->
             if robot.position == index then
-                viewBox [ E.onClick (SetGridTile index), inFront viewBot ] tile
+                viewBox [ inFront viewBot ] tile
 
             else
-                viewBox [ E.onClick (SetGridTile index) ] tile
+                viewBox [] tile
 
         _ ->
             viewBox [ E.onClick (SetGridTile index) ] tile
@@ -412,7 +407,7 @@ viewReplayControls model =
                     button { onPress = Just Replay, label = playIcon }
 
                 Replaying _ ->
-                    button { onPress = Just Replay, label = pauseIcon }
+                    button { onPress = Just (Edit Empty), label = pauseIcon }
     in
     El.column
         [ spacing 10, alignTop ]
