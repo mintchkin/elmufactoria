@@ -57,6 +57,9 @@ list =
                     ( Red :: _, Passed _ ) ->
                         True
 
+                    ( Red :: _, Failed ) ->
+                        False
+
                     ( _, Passed _ ) ->
                         False
 
