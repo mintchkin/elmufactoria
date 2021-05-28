@@ -370,6 +370,55 @@ viewReplayControls model =
         [ playPauseButton ]
 
 
+viewRobotInfoPane : Model -> Element Msg
+viewRobotInfoPane model =
+    let
+        block code =
+            let
+                circle color =
+                    el
+                        [ Background.color color
+                        , width fill
+                        , height (px 20)
+                        ]
+                        none
+            in
+            case code of
+                Blue ->
+                    circle (rgb 0 0 1)
+
+                Red ->
+                    circle (rgb 1 0 0)
+
+        blocks =
+            case model.mode of
+                Replaying ({ codes } :: _) ->
+                    List.map block codes
+
+                _ ->
+                    []
+
+        gridSize =
+            tileSize * ((model.level.size * 2) - 1)
+    in
+    El.column
+        [ width (px 100)
+        , height (fill |> maximum gridSize)
+        , clipY
+        , Border.color (rgb 0 0 0)
+        , Border.width 2
+        , inFront <|
+            el
+                [ Background.gradient { angle = 0, steps = [ rgba 1 1 1 1, rgba 1 1 1 0 ] }
+                , width fill
+                , height (px 20)
+                , alignBottom
+                ]
+                none
+        ]
+        blocks
+
+
 view : Model -> Html Msg
 view model =
     El.layout [ width fill, height fill ]
@@ -387,7 +436,7 @@ view model =
                 [ padding 10, spacing 10 ]
                 [ viewPalette
                 , viewGrid model
-                , viewSuccessIndicator model
+                , viewRobotInfoPane model
                 , viewReplayControls model
                 ]
             , El.paragraph
