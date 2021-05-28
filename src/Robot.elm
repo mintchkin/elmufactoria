@@ -1,4 +1,4 @@
-module Robot exposing (..)
+module Robot exposing (Progress(..), Robot, advance, checkSolution, initAll, view)
 
 import Array exposing (Array)
 import Direction exposing (Direction(..))
@@ -25,8 +25,8 @@ initAll level =
     List.map (Robot [] (level.size - 1)) level.tests
 
 
-testSolution : Level -> Array Tile -> Bool
-testSolution { criteria, tests, size } solution =
+checkSolution : Level -> Array Tile -> Bool
+checkSolution { criteria, tests, size } solution =
     let
         initRobot =
             Robot [] (size - 1)

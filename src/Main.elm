@@ -14,7 +14,7 @@ import Html exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as D
 import Level as Level exposing (Code(..), Level, Outcome(..))
-import Robot exposing (Progress(..), Robot, advance, testSolution)
+import Robot exposing (Progress(..), Robot, advance, checkSolution)
 import Tile exposing (Tile(..))
 import Time
 
@@ -178,7 +178,7 @@ update msg model =
                             Array.set index replacement model.grid
 
                         success =
-                            testSolution model.level grid
+                            checkSolution model.level grid
                     in
                     ( { model | grid = grid, success = success }, Cmd.none )
 
