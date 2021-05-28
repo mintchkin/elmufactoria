@@ -202,13 +202,19 @@ update msg model =
 
 
 -- VIEW
+-- CONSTANTS
+
+
+tileSize : Int
+tileSize =
+    50
 
 
 viewBox : List (Attribute Msg) -> Tile -> Element Msg
 viewBox attributes tile =
     el
-        ([ width (px 50)
-         , height (px 50)
+        ([ width (px tileSize)
+         , height (px tileSize)
          , Border.color (rgb 0 0 0)
          , Border.width 2
          ]
@@ -242,8 +248,8 @@ viewBrush model =
         Editing tile ->
             el
                 [ htmlAttribute <| HA.style "position" "fixed"
-                , htmlAttribute <| HA.style "left" (toPixels (xpos - 25))
-                , htmlAttribute <| HA.style "top" (toPixels (ypos - 25))
+                , htmlAttribute <| HA.style "left" (toPixels (xpos - (toFloat tileSize / 2)))
+                , htmlAttribute <| HA.style "top" (toPixels (ypos - (toFloat tileSize / 2)))
                 , htmlAttribute <| HA.style "pointer-events" "none"
                 ]
                 (viewBox [] tile)
@@ -301,8 +307,8 @@ viewLevelSelect =
     let
         levelButton number level =
             Input.button
-                [ width (px 50)
-                , height (px 50)
+                [ width (px tileSize)
+                , height (px tileSize)
                 , Border.color (rgb 0 0 0)
                 , Border.width 2
                 , Font.center
@@ -344,8 +350,8 @@ viewReplayControls model =
     let
         button =
             Input.button
-                [ width (px 50)
-                , height (px 50)
+                [ width (px tileSize)
+                , height (px tileSize)
                 , Border.color (rgb 0 0 0)
                 , Border.width 2
                 , Font.center
