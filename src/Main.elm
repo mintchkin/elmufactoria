@@ -44,7 +44,7 @@ type alias Model =
 
 type Mode
     = Editing Tile
-    | Replaying (List Robot)
+    | Replaying Int (List Robot)
 
 
 type Position
@@ -75,14 +75,22 @@ init _ =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    let
+        runReplay speed =
+            if speed <= 0 then
+                Sub.none
+
+            else
+                Time.every (1000 / speed) (\_ -> StepReplay)
+    in
     case model.mode of
-        Replaying _ ->
+        Replaying speed _ ->
             Sub.batch
                 [ BE.onMouseDown <|
                     D.map2 SetPosition
                         (D.field "pageX" D.float)
                         (D.field "pageY" D.float)
-                , Time.every 1000 (\_ -> StepReplay)
+                , runReplay (toFloat speed)
                 ]
 
         Editing _ ->
@@ -108,6 +116,8 @@ type Msg
     | SetPosition Float Float
     | SetGridTile Int
     | StepReplay
+    | IncreaseSpeed
+    | DecreaseSpeed
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -122,13 +132,13 @@ update msg model =
             )
 
         Replay ->
-            ( { model | mode = Replaying (Robot.initAll model.level) }
+            ( { model | mode = Replaying 1 (Robot.initAll model.level) }
             , Cmd.none
             )
 
         PressKey key ->
             case model.mode of
-                Replaying _ ->
+                Replaying _ _ ->
                     ( model, Cmd.none )
 
                 Editing tile ->
@@ -158,7 +168,7 @@ update msg model =
         -- EDITING ONLY
         SetGridTile index ->
             case model.mode of
-                Replaying _ ->
+                Replaying _ _ ->
                     ( model, Cmd.none )
 
                 Editing tile ->
@@ -188,16 +198,32 @@ update msg model =
                 Editing _ ->
                     ( model, Cmd.none )
 
-                Replaying [] ->
+                Replaying _ [] ->
                     ( model, Cmd.none )
 
-                Replaying (robot :: rest) ->
+                Replaying s (robot :: rest) ->
                     case advance model.grid robot of
                         Finished _ ->
-                            ( { model | mode = Replaying rest }, Cmd.none )
+                            ( { model | mode = Replaying s rest }, Cmd.none )
 
                         Working bot ->
-                            ( { model | mode = Replaying (bot :: rest) }, Cmd.none )
+                            ( { model | mode = Replaying s (bot :: rest) }, Cmd.none )
+
+        IncreaseSpeed ->
+            case model.mode of
+                Editing _ ->
+                    ( model, Cmd.none )
+
+                Replaying speed robots ->
+                    ( { model | mode = Replaying (clamp 0 10 (speed + 1)) robots }, Cmd.none )
+
+        DecreaseSpeed ->
+            case model.mode of
+                Editing _ ->
+                    ( model, Cmd.none )
+
+                Replaying speed robots ->
+                    ( { model | mode = Replaying (clamp 0 10 (speed - 1)) robots }, Cmd.none )
 
 
 
@@ -254,14 +280,14 @@ viewBrush model =
                 ]
                 (viewBox [] tile)
 
-        Replaying _ ->
+        Replaying _ _ ->
             none
 
 
 viewGridCell : Model -> Int -> Tile -> Element Msg
 viewGridCell model index tile =
     case model.mode of
-        Replaying (robot :: _) ->
+        Replaying _ (robot :: _) ->
             if robot.position == index then
                 viewBox [ inFront Robot.view ] tile
 
@@ -345,6 +371,28 @@ pauseIcon =
         )
 
 
+fastForwardIcon : Element msg
+fastForwardIcon =
+    el
+        [ centerX
+        , centerY
+        , Font.size 20
+        , Font.letterSpacing -3
+        ]
+        (text "▶▶")
+
+
+slowDownIcon : Element msg
+slowDownIcon =
+    el
+        [ centerX
+        , centerY
+        , Font.size 20
+        , Font.letterSpacing -3
+        ]
+        (text "◀◀")
+
+
 viewReplayControls : Model -> Element Msg
 viewReplayControls model =
     let
@@ -362,12 +410,18 @@ viewReplayControls model =
                 Editing _ ->
                     button { onPress = Just Replay, label = playIcon }
 
-                Replaying _ ->
+                Replaying _ _ ->
                     button { onPress = Just (Edit Empty), label = pauseIcon }
+
+        fastForwardButton =
+            button { onPress = Just IncreaseSpeed, label = fastForwardIcon }
+
+        slowDownButton =
+            button { onPress = Just DecreaseSpeed, label = slowDownIcon }
     in
     El.column
         [ spacing 10, alignTop ]
-        [ playPauseButton ]
+        [ playPauseButton, fastForwardButton, slowDownButton ]
 
 
 viewRobotInfoPane : Model -> Element Msg
@@ -392,7 +446,7 @@ viewRobotInfoPane model =
 
         blocks =
             case model.mode of
-                Replaying ({ codes } :: _) ->
+                Replaying _ ({ codes } :: _) ->
                     List.map block codes
 
                 _ ->
