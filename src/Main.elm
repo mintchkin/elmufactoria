@@ -90,8 +90,8 @@ subscriptions model =
             Sub.batch
                 [ BE.onMouseDown <|
                     D.map2 SetPosition
-                        (D.field "pageX" D.float)
-                        (D.field "pageY" D.float)
+                        (D.field "clientX" D.float)
+                        (D.field "clientY" D.float)
                 , runReplay (toFloat speed)
                 ]
 
@@ -99,8 +99,8 @@ subscriptions model =
             Sub.batch
                 [ BE.onMouseMove <|
                     D.map2 SetPosition
-                        (D.field "pageX" D.float)
-                        (D.field "pageY" D.float)
+                        (D.field "clientX" D.float)
+                        (D.field "clientY" D.float)
                 , BE.onKeyDown <|
                     D.map PressKey (D.field "key" D.string)
                 ]
