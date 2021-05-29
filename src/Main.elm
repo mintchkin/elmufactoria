@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import Array exposing (Array(..))
+import Bitwise as Bit
 import Browser exposing (..)
 import Browser.Events as BE
 import Direction as Direction exposing (Direction(..))
@@ -12,6 +13,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as HA
+import Html.Events as HE
 import Json.Decode as D
 import Level as Level exposing (Code(..), Level, Outcome(..))
 import Robot exposing (Progress(..), Robot, advance, checkSolution)
@@ -284,6 +286,21 @@ viewBrush model =
             none
 
 
+onDraggingMouseEnter : msg -> Attribute msg
+onDraggingMouseEnter msg =
+    let
+        ifDragging m buttons =
+            if Bit.and 1 buttons == 1 then
+                D.succeed m
+
+            else
+                D.fail "Not dragging"
+    in
+    htmlAttribute <|
+        HE.on "mouseenter" <|
+            (D.field "buttons" D.int |> D.andThen (ifDragging msg))
+
+
 viewGridCell : Model -> Int -> Tile -> Element Msg
 viewGridCell model index tile =
     case model.mode of
@@ -295,7 +312,11 @@ viewGridCell model index tile =
                 viewBox [] tile
 
         _ ->
-            viewBox [ E.onClick (SetGridTile index) ] tile
+            viewBox
+                [ E.onMouseDown (SetGridTile index)
+                , onDraggingMouseEnter (SetGridTile index)
+                ]
+                tile
 
 
 viewGrid : Model -> Element Msg
