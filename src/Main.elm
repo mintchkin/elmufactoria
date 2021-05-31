@@ -213,9 +213,9 @@ view model =
     in
     El.layout [ width fill, height fill ]
         (El.column
-            [ centerX, centerY, spacing 20 ]
+            [ centerX, alignTop, spacing 20 ]
             [ El.column
-                [ spacing 10, padding 10, Font.bold, Font.size 25 ]
+                [ spacing 10, padding 10, centerX, Font.bold, Font.size 25, width <| px (tileSize * 8) ]
                 [ text "Level Select:"
                 , viewLevelSelect
                 ]
@@ -223,12 +223,12 @@ view model =
                 [ Font.center, Font.bold, Font.size 40 ]
                 [ text model.level.name ]
             , El.row [ width fill, spacing 10 ]
-                [ el [ alignTop, width fill, height fill ] panels.viewLeftPanel
+                [ el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] panels.viewLeftPanel
                 , El.column [ centerX, spacing 10 ]
                     [ panels.viewGrid
                     , viewStartReplayButton model
                     ]
-                , el [ alignTop, width fill, height fill ] panels.viewRightPanel
+                , el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] panels.viewRightPanel
                 ]
             , El.paragraph
                 [ Font.center ]
@@ -253,6 +253,6 @@ loadLevel level =
 --- CONSTANTS ---
 
 
-tileSize : Int
+tileSize : number
 tileSize =
     50
