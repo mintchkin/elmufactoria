@@ -177,20 +177,27 @@ viewLevelSelect =
 --- REPLAYING ---
 
 
-viewStartReplayButton : Element Msg
-viewStartReplayButton =
+viewStartReplayButton : Model -> Element Msg
+viewStartReplayButton model =
     let
+        button =
+            Input.button
+                [ width fill
+                , height (px tileSize)
+                , Border.color (rgb 0 0 0)
+                , Border.width 2
+                , Font.center
+                ]
+
         label =
-            el [ centerX, centerY, Font.size 40 ] (text "▶︎")
+            el [ centerX, centerY, Font.size 25, Font.bold ] << text
     in
-    Input.button
-        [ width fill
-        , height (px tileSize)
-        , Border.color (rgb 0 0 0)
-        , Border.width 2
-        , Font.center
-        ]
-        { onPress = Just Replay, label = label }
+    case model.mode of
+        Editing _ ->
+            button { onPress = Just Replay, label = label "Test Solution" }
+
+        Replaying _ ->
+            button { onPress = Just Edit, label = label "Back To Editing" }
 
 
 view : Model -> Html Msg
@@ -219,7 +226,7 @@ view model =
                 [ el [ alignTop, width fill, height fill ] panels.viewLeftPanel
                 , El.column [ centerX, spacing 10 ]
                     [ panels.viewGrid
-                    , viewStartReplayButton
+                    , viewStartReplayButton model
                     ]
                 , el [ alignTop, width fill, height fill ] panels.viewRightPanel
                 ]
