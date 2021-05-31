@@ -168,9 +168,9 @@ viewReplayControls mapMsg model =
         slowDownButton =
             button { onPress = Just <| mapMsg DecreaseSpeed, label = slowDownIcon }
     in
-    El.row
-        [ spacing 10, alignTop ]
-        [ playPauseButton, fastForwardButton, slowDownButton ]
+    El.column
+        [ spacing 10, alignTop, alignRight ]
+        [ slowDownButton, playPauseButton, fastForwardButton ]
 
 
 viewRobotInfoPane : Model -> Element msg
@@ -222,14 +222,14 @@ viewRobotInfoPane model =
         blocks
 
 
-viewLeftPanel : Model -> Element msg
-viewLeftPanel _ =
-    El.none
+viewLeftPanel : (Msg -> msg) -> Model -> Element msg
+viewLeftPanel mapMsg model =
+    viewReplayControls mapMsg model
 
 
 viewRightPanel : (Msg -> msg) -> Model -> Element msg
-viewRightPanel mapMsg model =
-    El.row [ height fill, spacing 10 ] [ viewRobotInfoPane model, viewReplayControls mapMsg model ]
+viewRightPanel _ model =
+    viewRobotInfoPane model
 
 
 viewGrid : Model -> Element msg
@@ -261,7 +261,7 @@ panels :
     -> Model
     -> { viewLeftPanel : Element msg, viewRightPanel : Element msg, viewGrid : Element msg }
 panels mapMsg model =
-    { viewLeftPanel = viewLeftPanel model
+    { viewLeftPanel = viewLeftPanel mapMsg model
     , viewRightPanel = viewRightPanel mapMsg model
     , viewGrid = viewGrid model
     }
