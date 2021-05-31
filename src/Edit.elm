@@ -74,15 +74,21 @@ update msg model =
             ( { model | mousePos = Position x y }, Cmd.none )
 
         PressKey key ->
-            case ( key, Direction.fromKey key ) of
-                ( "Esc", _ ) ->
+            case ( key, Direction.fromKey key, Tile.fromKey key ) of
+                ( "Esc", _, _ ) ->
                     ( { model | brush = Empty }, Cmd.none )
 
-                ( "Escape", _ ) ->
+                ( "Escape", _, _ ) ->
                     ( { model | brush = Empty }, Cmd.none )
 
-                ( _, Just direction ) ->
+                ( " ", _, _ ) ->
+                    ( { model | brush = Tile.invert model.brush }, Cmd.none )
+
+                ( _, Just direction, _ ) ->
                     ( { model | brush = Tile.direct direction model.brush }, Cmd.none )
+
+                ( _, _, Just tile ) ->
+                    ( { model | brush = Tile.matchDirection model.brush tile }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )

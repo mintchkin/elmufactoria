@@ -85,6 +85,17 @@ getDirection robot tile =
                 _ ->
                     Just direction
 
+        BRSplitter direction ->
+            case robot.codes of
+                Blue :: _ ->
+                    Just (Direction.shiftClockwise direction)
+
+                Red :: _ ->
+                    Just (Direction.flip <| Direction.shiftClockwise direction)
+
+                _ ->
+                    Just direction
+
         Empty ->
             Nothing
 
@@ -122,6 +133,17 @@ updateCodes : Array Tile -> Robot -> Robot
 updateCodes tiles robot =
     case Array.get robot.position tiles of
         Just (RBSplitter _) ->
+            case robot.codes of
+                Red :: rest ->
+                    { robot | codes = rest }
+
+                Blue :: rest ->
+                    { robot | codes = rest }
+
+                [] ->
+                    robot
+
+        Just (BRSplitter _) ->
             case robot.codes of
                 Red :: rest ->
                     { robot | codes = rest }
