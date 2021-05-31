@@ -55,3 +55,20 @@ view tile =
                 , indicator [ Background.color (rgb 0.3 0.3 0.3), centerX, alignBottom ]
                 , indicator [ Background.color (rgb 0 0 1), alignRight ]
                 ]
+
+
+
+--- HELPERS ---
+
+
+direct : Direction -> Tile -> Tile
+direct direction tile =
+    case tile of
+        Track _ ->
+            Track direction
+
+        RBSplitter _ ->
+            RBSplitter direction
+
+        other ->
+            other
