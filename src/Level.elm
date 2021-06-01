@@ -90,4 +90,37 @@ list =
             , List.concat <| List.repeat 10 [ Red, Blue ]
             ]
       }
+    , { name = "One At A Time"
+      , description = "Reject any robots that use the same color twice in a row"
+      , size = 5
+      , criteria =
+            \initial outcome ->
+                let
+                    check codes =
+                        case codes of
+                            fst :: snd :: rest ->
+                                if fst == snd then
+                                    False
+
+                                else
+                                    check (snd :: rest)
+
+                            _ ->
+                                True
+                in
+                case outcome of
+                    Passed _ ->
+                        check initial
+
+                    Failed ->
+                        not (check initial)
+      , tests =
+            [ []
+            , [ Blue ]
+            , [ Blue, Red ]
+            , [ Red, Red ]
+            , [ Blue, Red, Blue, Red, Blue, Red, Blue, Red, Blue ]
+            , [ Red, Blue, Red, Blue, Red, Blue, Red, Blue, Red, Red ]
+            ]
+      }
     ]
