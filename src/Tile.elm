@@ -1,6 +1,6 @@
 module Tile exposing (..)
 
-import Direction exposing (Direction(..))
+import Direction exposing (Direction(..), Rotation(..))
 import Element as El exposing (..)
 import Element.Background as Background
 
@@ -8,6 +8,7 @@ import Element.Background as Background
 type Tile
     = Empty
     | Track Direction
+    | MultiTrack Direction Rotation
     | RBSplitter Direction
     | BRSplitter Direction
     | Begin
@@ -23,12 +24,27 @@ viewSplitter left right direction =
     El.row
         [ width fill
         , height fill
-        , rotate (Direction.toRotation direction)
+        , rotate (Direction.toAngle direction)
         ]
         [ indicator [ Background.color left, alignLeft ]
         , indicator [ Background.color (rgb 0.3 0.3 0.3), centerX, alignBottom ]
         , indicator [ Background.color right, alignRight ]
         ]
+
+
+viewTrack : Direction -> Element msg
+viewTrack direction =
+    el
+        [ width fill, height fill, rotate (Direction.toAngle direction) ]
+        (el
+            [ centerX
+            , alignBottom
+            , width (px 20)
+            , height (px 40)
+            , Background.color (rgb 0 0 0)
+            ]
+            none
+        )
 
 
 view : Tile -> Element msg
@@ -44,20 +60,15 @@ view tile =
             El.el [ width fill, height fill, Background.color (rgb 0 0 1) ] none
 
         Track direction ->
-            El.row
+            viewTrack direction
+
+        MultiTrack fst snd ->
+            el
                 [ width fill
                 , height fill
-                , rotate (Direction.toRotation direction)
+                , inFront <| viewTrack (Direction.rotate snd fst)
                 ]
-                [ el
-                    [ centerX
-                    , alignBottom
-                    , width (px 20)
-                    , height (px 40)
-                    , Background.color (rgb 0 0 0)
-                    ]
-                    none
-                ]
+                (viewTrack fst)
 
         RBSplitter direction ->
             viewSplitter red blue direction
@@ -90,6 +101,9 @@ direct direction tile =
         Track _ ->
             Track direction
 
+        MultiTrack _ rotation ->
+            MultiTrack direction rotation
+
         RBSplitter _ ->
             RBSplitter direction
 
@@ -104,6 +118,9 @@ getDirection : Tile -> Maybe Direction
 getDirection tile =
     case tile of
         Track direction ->
+            Just direction
+
+        MultiTrack direction _ ->
             Just direction
 
         RBSplitter direction ->

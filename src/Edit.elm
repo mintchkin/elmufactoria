@@ -3,7 +3,7 @@ module Edit exposing (..)
 import Array exposing (Array)
 import Bitwise as Bit
 import Browser.Events as BE
-import Direction exposing (Direction(..))
+import Direction exposing (Direction(..), Rotation(..))
 import Element as El exposing (..)
 import Element.Border as Border
 import Element.Events as E
@@ -96,12 +96,46 @@ update msg model =
         SetGridTile index ->
             let
                 replacement =
-                    case Array.get index model.grid of
-                        Just Begin ->
+                    case ( Array.get index model.grid, model.brush ) of
+                        ( Just Begin, _ ) ->
                             Begin
 
-                        Just End ->
+                        ( Just End, _ ) ->
                             End
+
+                        ( Just (Track fst), Track snd ) ->
+                            if fst == snd || fst == Direction.reverse snd then
+                                Track snd
+
+                            else if snd == Direction.rotate Clockwise fst then
+                                MultiTrack fst Clockwise
+
+                            else
+                                MultiTrack fst CounterClock
+
+                        ( Just (MultiTrack first rotation), Track direction ) ->
+                            let
+                                second =
+                                    Direction.rotate rotation first
+
+                                reversed =
+                                    Direction.reverse direction
+                            in
+                            case ( first == reversed, second == reversed, rotation ) of
+                                ( True, _, Clockwise ) ->
+                                    MultiTrack direction CounterClock
+
+                                ( True, _, CounterClock ) ->
+                                    MultiTrack direction Clockwise
+
+                                ( _, True, Clockwise ) ->
+                                    MultiTrack direction Clockwise
+
+                                ( _, True, CounterClock ) ->
+                                    MultiTrack direction CounterClock
+
+                                _ ->
+                                    Track direction
 
                         _ ->
                             model.brush

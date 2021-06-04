@@ -1,7 +1,7 @@
 module Robot exposing (Progress(..), Robot, advance, checkSolution, initAll, view)
 
 import Array exposing (Array)
-import Direction exposing (Direction(..))
+import Direction exposing (Direction(..), Rotation(..))
 import Element as El exposing (..)
 import Element.Background as Background
 import Level exposing (Code(..), Level, Outcome(..))
@@ -74,13 +74,42 @@ getDirection robot tile =
         Track direction ->
             Just direction
 
+        MultiTrack first rotation ->
+            let
+                continue from =
+                    if from == first || from == Direction.reverse first then
+                        first
+
+                    else
+                        Direction.rotate rotation first
+
+                trajectory =
+                    case ( robot.position, robot.codes ) :: robot.memories of
+                        ( curr, _ ) :: ( prev, _ ) :: _ ->
+                            if curr == prev - 1 then
+                                Just Left
+
+                            else if curr == prev + 1 then
+                                Just Right
+
+                            else if curr < prev then
+                                Just Up
+
+                            else
+                                Just Down
+
+                        _ ->
+                            Nothing
+            in
+            trajectory |> Maybe.map continue
+
         RBSplitter direction ->
             case robot.codes of
                 Red :: _ ->
-                    Just (Direction.shiftClockwise direction)
+                    Just (Direction.rotate Clockwise direction)
 
                 Blue :: _ ->
-                    Just (Direction.flip <| Direction.shiftClockwise direction)
+                    Just (Direction.rotate CounterClock direction)
 
                 _ ->
                     Just direction
@@ -88,10 +117,10 @@ getDirection robot tile =
         BRSplitter direction ->
             case robot.codes of
                 Blue :: _ ->
-                    Just (Direction.shiftClockwise direction)
+                    Just (Direction.rotate Clockwise direction)
 
                 Red :: _ ->
-                    Just (Direction.flip <| Direction.shiftClockwise direction)
+                    Just (Direction.rotate CounterClock direction)
 
                 _ ->
                     Just direction

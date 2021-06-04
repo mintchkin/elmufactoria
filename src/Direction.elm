@@ -1,4 +1,4 @@
-module Direction exposing (Direction(..), flip, fromKey, shiftClockwise, toRotation)
+module Direction exposing (Direction(..), Rotation(..), fromKey, reverse, rotate, toAngle)
 
 
 type Direction
@@ -8,24 +8,38 @@ type Direction
     | Left
 
 
-shiftClockwise : Direction -> Direction
-shiftClockwise direction =
-    case direction of
-        Up ->
-            Right
-
-        Right ->
-            Down
-
-        Down ->
-            Left
-
-        Left ->
-            Up
+type Rotation
+    = Clockwise
+    | CounterClock
 
 
-flip : Direction -> Direction
-flip direction =
+rotate : Rotation -> Direction -> Direction
+rotate course direction =
+    let
+        clockwise =
+            case direction of
+                Up ->
+                    Right
+
+                Right ->
+                    Down
+
+                Down ->
+                    Left
+
+                Left ->
+                    Up
+    in
+    case course of
+        Clockwise ->
+            clockwise
+
+        CounterClock ->
+            reverse clockwise
+
+
+reverse : Direction -> Direction
+reverse direction =
     case direction of
         Up ->
             Down
@@ -59,8 +73,8 @@ fromKey key =
             Nothing
 
 
-toRotation : Direction -> Float
-toRotation direction =
+toAngle : Direction -> Float
+toAngle direction =
     case direction of
         Down ->
             turns 0
