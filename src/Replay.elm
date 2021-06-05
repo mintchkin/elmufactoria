@@ -181,8 +181,10 @@ viewRobotInfoPane model =
                 circle color =
                     el
                         [ Background.color color
-                        , width fill
-                        , height (px 20)
+                        , Border.rounded tileSize
+                        , width (px <| tileSize - 14)
+                        , height (px <| tileSize - 14)
+                        , centerX
                         ]
                         none
             in
@@ -205,9 +207,11 @@ viewRobotInfoPane model =
             tileSize * getSize model.grid
     in
     El.column
-        [ width (px 100)
+        [ width (px tileSize)
         , height (fill |> maximum gridSize)
         , clipY
+        , spacing 5
+        , padding 5
         , Border.color (rgb 0 0 0)
         , Border.width 2
         , inFront <|
@@ -271,7 +275,7 @@ panels mapMsg model =
 --- CONSTANTS ---
 
 
-tileSize : Int
+tileSize : number
 tileSize =
     50
 
