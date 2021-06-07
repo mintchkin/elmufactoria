@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Array exposing (Array)
 import Browser
@@ -9,9 +9,12 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
+import Json.Decode as JsonD
+import Json.Encode as JsonE
 import Level exposing (Level)
 import Replay
 import Tile exposing (Tile(..))
+import Time
 
 
 main : Program () Model Msg
@@ -54,8 +57,55 @@ initBoard size =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( loadLevel Level.first
-    , Cmd.none
+    , requestProgress Level.first
     )
+
+
+
+-- PORTS
+
+
+port requestStorage : JsonE.Value -> Cmd msg
+
+
+port receiveStorage : (JsonE.Value -> msg) -> Sub msg
+
+
+saveProgress : Model -> Cmd msg
+saveProgress model =
+    let
+        progressEncoder key grid =
+            JsonE.object
+                [ ( "op", JsonE.string "Save" )
+                , ( "key", JsonE.string key )
+                , ( "data", JsonE.array Tile.toJson grid )
+                ]
+    in
+    case model.mode of
+        Editing { grid } ->
+            requestStorage <| progressEncoder model.level.name grid
+
+        Replaying { grid } ->
+            requestStorage <| progressEncoder model.level.name grid
+
+
+requestProgress : Level -> Cmd msg
+requestProgress level =
+    let
+        request =
+            JsonE.object
+                [ ( "op", JsonE.string "Load" )
+                , ( "key", JsonE.string level.name )
+                ]
+    in
+    requestStorage request
+
+
+decodeProgress : JsonD.Decoder ( String, Array Tile )
+decodeProgress =
+    JsonD.map2 Tuple.pair
+        (JsonD.field "key" JsonD.string)
+        (JsonD.field "data" <| JsonD.array Tile.fromJson)
 
 
 
@@ -64,12 +114,22 @@ init _ =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.mode of
-        Replaying m ->
-            Sub.map GotReplayMsg (Replay.subscriptions m)
+    let
+        modeSubs =
+            case model.mode of
+                Replaying m ->
+                    Sub.map GotReplayMsg (Replay.subscriptions m)
 
-        Editing m ->
-            Sub.map GotEditMsg (Edit.subscriptions m)
+                Editing m ->
+                    Sub.map GotEditMsg (Edit.subscriptions m)
+
+        autoSave =
+            Time.every 5000 (\_ -> AutoSave)
+
+        loadProgress =
+            receiveStorage LoadProgress
+    in
+    Sub.batch [ autoSave, loadProgress, modeSubs ]
 
 
 
@@ -78,6 +138,8 @@ subscriptions model =
 
 type Msg
     = LoadLevel Level
+    | AutoSave
+    | LoadProgress JsonD.Value
     | Edit
     | Replay
     | GotReplayMsg Replay.Msg
@@ -88,7 +150,26 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         LoadLevel level ->
-            ( loadLevel level, Cmd.none )
+            ( loadLevel level, Cmd.batch [ saveProgress model, requestProgress level ] )
+
+        AutoSave ->
+            ( model, saveProgress model )
+
+        LoadProgress json ->
+            case JsonD.decodeValue decodeProgress json of
+                Ok ( name, grid ) ->
+                    case ( model.level.name == name, model.mode ) of
+                        ( True, Replaying _ ) ->
+                            ( { model | mode = Replaying <| Replay.init grid model.level }, Cmd.none )
+
+                        ( True, Editing _ ) ->
+                            ( { model | mode = Editing <| Edit.init grid }, Cmd.none )
+
+                        _ ->
+                            ( model, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
 
         Edit ->
             case model.mode of
@@ -96,12 +177,12 @@ update msg model =
                     ( model, Cmd.none )
 
                 Replaying { grid } ->
-                    ( { model | mode = Editing <| Edit.init grid }, Cmd.none )
+                    ( { model | mode = Editing <| Edit.init grid }, saveProgress model )
 
         Replay ->
             case model.mode of
                 Editing { grid } ->
-                    ( { model | mode = Replaying <| Replay.init grid model.level }, Cmd.none )
+                    ( { model | mode = Replaying <| Replay.init grid model.level }, saveProgress model )
 
                 Replaying _ ->
                     ( model, Cmd.none )

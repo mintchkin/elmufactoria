@@ -3,6 +3,8 @@ module Tile exposing (..)
 import Direction exposing (Direction(..), Rotation(..))
 import Element as El exposing (..)
 import Element.Background as Background
+import Json.Decode as JsonD
+import Json.Encode as JsonE
 
 
 type Tile
@@ -167,3 +169,144 @@ fromKey key =
 
         _ ->
             Nothing
+
+
+toJson : Tile -> JsonE.Value
+toJson tile =
+    let
+        dirEncoder direction =
+            case direction of
+                Up ->
+                    JsonE.string "Up"
+
+                Down ->
+                    JsonE.string "Down"
+
+                Left ->
+                    JsonE.string "Left"
+
+                Right ->
+                    JsonE.string "Right"
+
+        rotEncoder rotation =
+            case rotation of
+                Clockwise ->
+                    JsonE.string "Clockwise"
+
+                CounterClock ->
+                    JsonE.string "CounterClock"
+    in
+    case tile of
+        Empty ->
+            JsonE.object
+                [ ( "tile", JsonE.string "Empty" )
+                ]
+
+        Track dir ->
+            JsonE.object
+                [ ( "tile", JsonE.string "Track" )
+                , ( "dir", dirEncoder dir )
+                ]
+
+        MultiTrack dir rot ->
+            JsonE.object
+                [ ( "tile", JsonE.string "MultiTrack" )
+                , ( "dir", dirEncoder dir )
+                , ( "rot", rotEncoder rot )
+                ]
+
+        RBSplitter dir ->
+            JsonE.object
+                [ ( "tile", JsonE.string "RBSplitter" )
+                , ( "dir", dirEncoder dir )
+                ]
+
+        BRSplitter dir ->
+            JsonE.object
+                [ ( "tile", JsonE.string "BRSplitter" )
+                , ( "dir", dirEncoder dir )
+                ]
+
+        Begin ->
+            JsonE.object
+                [ ( "tile", JsonE.string "Begin" )
+                ]
+
+        End ->
+            JsonE.object
+                [ ( "tile", JsonE.string "End" )
+                ]
+
+
+fromJson : JsonD.Decoder Tile
+fromJson =
+    let
+        dirDecoder =
+            let
+                decode name =
+                    case name of
+                        "Up" ->
+                            JsonD.succeed Up
+
+                        "Down" ->
+                            JsonD.succeed Down
+
+                        "Left" ->
+                            JsonD.succeed Left
+
+                        "Right" ->
+                            JsonD.succeed Right
+
+                        _ ->
+                            JsonD.fail "Could not decode direction"
+            in
+            JsonD.string |> JsonD.andThen decode
+
+        rotDecoder =
+            let
+                decode name =
+                    case name of
+                        "Clockwise" ->
+                            JsonD.succeed Clockwise
+
+                        "CounterClock" ->
+                            JsonD.succeed CounterClock
+
+                        _ ->
+                            JsonD.fail "Could not decode rotation"
+            in
+            JsonD.string |> JsonD.andThen decode
+
+        decodeTile name =
+            case name of
+                "Empty" ->
+                    JsonD.succeed Empty
+
+                "Track" ->
+                    JsonD.map Track
+                        (JsonD.field "dir" dirDecoder)
+
+                "MultiTrack" ->
+                    JsonD.map2 MultiTrack
+                        (JsonD.field "dir" dirDecoder)
+                        (JsonD.field "rot" rotDecoder)
+
+                "RBSplitter" ->
+                    JsonD.map RBSplitter
+                        (JsonD.field "dir" dirDecoder)
+
+                "BRSplitter" ->
+                    JsonD.map BRSplitter
+                        (JsonD.field "dir" dirDecoder)
+
+                "Begin" ->
+                    JsonD.succeed Begin
+
+                "End" ->
+                    JsonD.succeed End
+
+                _ ->
+                    JsonD.fail "Could not decode tile"
+    in
+    JsonD.field "tile" JsonD.string
+        |> JsonD.andThen decodeTile
