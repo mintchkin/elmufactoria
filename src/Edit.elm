@@ -41,15 +41,23 @@ init grid =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     let
         updatePosition =
             Json.map2 SetPosition
                 (Json.field "clientX" Json.float)
                 (Json.field "clientY" Json.float)
+
+        onMouseMove =
+            case model.brush of
+                Empty ->
+                    Sub.none
+
+                _ ->
+                    BE.onMouseMove updatePosition
     in
     Sub.batch
-        [ BE.onMouseMove updatePosition
+        [ onMouseMove
         , BE.onMouseDown updatePosition
         , BE.onKeyDown <|
             Json.map PressKey (Json.field "key" Json.string)
