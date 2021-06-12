@@ -1,4 +1,4 @@
-module Robot exposing (Progress(..), Robot, advance, checkSolution, initAll, view)
+module Robot exposing (Progress(..), Robot, advance, checkSolution, initAll, isFinished, view)
 
 import Array exposing (Array)
 import Direction exposing (Direction(..), Rotation(..))

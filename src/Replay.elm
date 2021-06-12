@@ -6,7 +6,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Level exposing (Code(..), Level)
+import Level exposing (Code(..), Level, Outcome(..))
 import Robot exposing (Progress(..), Robot)
 import Tile exposing (Tile)
 import Time
@@ -66,6 +66,9 @@ update msg model =
 
                 robot :: rest ->
                     case Robot.advance model.grid robot of
+                        Finished Failed ->
+                            ( { model | robots = [ robot ] }, Cmd.none )
+
                         Finished _ ->
                             ( { model | robots = rest }, Cmd.none )
 
@@ -182,8 +185,8 @@ viewRobotInfoPane model =
                     el
                         [ Background.color color
                         , Border.rounded tileSize
-                        , width (px <| tileSize - 14)
-                        , height (px <| tileSize - 14)
+                        , width (px <| tileSize - 20)
+                        , height (px <| tileSize - 20)
                         , centerX
                         ]
                         none
@@ -239,16 +242,31 @@ viewRightPanel _ model =
 viewGrid : Model -> Element msg
 viewGrid model =
     let
-        isOnCell index robot =
-            robot.position == index
+        indicateFinished robot =
+            case Robot.isFinished model.grid robot of
+                Finished Failed ->
+                    [ Border.color (rgb 1 0 0), Border.width 4 ]
 
-        viewGridCell index tile =
-            case List.head model.robots |> Maybe.map (isOnCell index) of
-                Just True ->
-                    viewBox [ inFront Robot.view ] tile
+                Finished (Passed _) ->
+                    [ Border.color (rgb 0 1 0), Border.width 4 ]
 
                 _ ->
+                    []
+
+        indicateBot robot index =
+            if robot.position == index then
+                inFront Robot.view :: indicateFinished robot
+
+            else
+                []
+
+        viewGridCell index tile =
+            case model.robots of
+                [] ->
                     viewBox [] tile
+
+                robot :: _ ->
+                    viewBox (indicateBot robot index) tile
     in
     El.column
         []
