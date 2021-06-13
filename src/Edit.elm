@@ -254,8 +254,8 @@ viewBrush model =
 
 
 viewLeftPanel : Model -> Element Msg
-viewLeftPanel _ =
-    el [ alignRight ] viewPalette
+viewLeftPanel model =
+    el [ alignRight, inFront <| viewBrush model ] viewPalette
 
 
 viewRightPanel : Model -> Element Msg
@@ -265,22 +265,13 @@ viewRightPanel _ =
 
 viewGrid : Model -> Element Msg
 viewGrid model =
-    let
-        viewGridCell index tile =
-            viewBox
-                [ E.onMouseDown (SetGridTile index)
-                , onDraggingMouseEnter (SetGridTile index)
-                ]
-                tile
-    in
-    El.column
-        [ inFront (viewBrush model) ]
-        (model.grid
-            |> Array.indexedMap viewGridCell
-            |> Array.toList
-            |> squareUp
-            |> List.map (El.row [])
+    Tile.viewGrid
+        (\index ->
+            [ E.onMouseDown (SetGridTile index)
+            , onDraggingMouseEnter (SetGridTile index)
+            ]
         )
+        model.grid
 
 
 panels :

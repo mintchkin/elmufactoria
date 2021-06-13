@@ -305,23 +305,17 @@ viewGrid model =
 
             else
                 []
-
-        viewGridCell index tile =
-            case model.robots of
-                [] ->
-                    viewBox [] tile
-
-                robot :: _ ->
-                    viewBox (indicateBot robot index) tile
     in
-    El.column
-        []
-        (model.grid
-            |> Array.indexedMap viewGridCell
-            |> Array.toList
-            |> squareUp
-            |> List.map (El.row [])
+    Tile.viewGrid
+        (\index ->
+            case model.robots of
+                robot :: _ ->
+                    indicateBot robot index
+
+                [] ->
+                    []
         )
+        model.grid
 
 
 panels :
@@ -342,18 +336,3 @@ panels mapMsg model =
 getSize : Array a -> Int
 getSize =
     round << sqrt << toFloat << Array.length
-
-
-chunk : Int -> List a -> List (List a)
-chunk i list =
-    case List.take i list of
-        [] ->
-            []
-
-        group ->
-            group :: chunk i (List.drop i list)
-
-
-squareUp : List a -> List (List a)
-squareUp list =
-    chunk (getSize <| Array.fromList list) list

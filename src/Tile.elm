@@ -1,8 +1,22 @@
-module Tile exposing (..)
+module Tile exposing
+    ( Tile(..)
+    , direct
+    , fromJson
+    , fromKey
+    , getDirection
+    , invert
+    , matchDirection
+    , toJson
+    , view
+    , viewGrid
+    )
 
+import Array exposing (Array)
+import Constants exposing (tileSize)
 import Direction exposing (Direction(..), Rotation(..))
 import Element as El exposing (..)
 import Element.Background as Background
+import Element.Border as Border
 import Json.Decode as JsonD
 import Json.Encode as JsonE
 
@@ -15,6 +29,10 @@ type Tile
     | BRSplitter Direction
     | Begin
     | End
+
+
+
+--- VIEW ---
 
 
 viewSplitter : El.Color -> El.Color -> Direction -> Element msg
@@ -79,22 +97,30 @@ view tile =
             viewSplitter blue red direction
 
 
+viewGrid : (Int -> List (Attribute msg)) -> Array Tile -> Element msg
+viewGrid getCellAttrs grid =
+    let
+        viewCell index tile =
+            el
+                ([ width (px tileSize)
+                 , height (px tileSize)
+                 , Border.color (rgb 0 0 0)
+                 , Border.width 2
+                 ]
+                    ++ getCellAttrs index
+                )
+                (view tile)
+    in
+    El.column []
+        (Array.toList grid
+            |> List.indexedMap viewCell
+            |> squareUp
+            |> List.map (El.row [])
+        )
 
---- CONSTANTS ---
 
 
-blue : El.Color
-blue =
-    rgb 0 0 1
-
-
-red : El.Color
-red =
-    rgb 1 0 0
-
-
-
---- HELPERS ---
+--- API ---
 
 
 direct : Direction -> Tile -> Tile
@@ -310,3 +336,36 @@ fromJson =
     in
     JsonD.field "tile" JsonD.string
         |> JsonD.andThen decodeTile
+
+
+
+--- HELPERS ---
+
+
+blue : El.Color
+blue =
+    rgb 0 0 1
+
+
+red : El.Color
+red =
+    rgb 1 0 0
+
+
+chunk : Int -> List a -> List (List a)
+chunk i list =
+    case List.take i list of
+        [] ->
+            []
+
+        group ->
+            group :: chunk i (List.drop i list)
+
+
+squareUp : List a -> List (List a)
+squareUp list =
+    let
+        getSize =
+            round << sqrt << toFloat << List.length
+    in
+    chunk (getSize list) list
