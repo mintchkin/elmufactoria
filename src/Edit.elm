@@ -159,15 +159,15 @@ update msg model =
 --- VIEW ---
 
 
-viewTooltip : List (Attribute msg) -> String -> Element msg
-viewTooltip attributes tip =
+viewTooltip : String -> Element msg
+viewTooltip tip =
     let
         toolTip =
             El.row
                 [ centerY
                 , spacing -2
                 , mouseOver [ transparent True ]
-                , htmlAttribute <| HA.style "user-select" "none"
+                , htmlAttribute <| HA.style "pointer-events" "none"
                 ]
                 [ el
                     [ padding 5
@@ -193,14 +193,12 @@ viewTooltip attributes tip =
                 ]
     in
     el
-        ([ width fill
-         , height fill
-         , transparent True
-         , mouseOver [ transparent False ]
-         , onLeft toolTip
-         ]
-            ++ attributes
-        )
+        [ width fill
+        , height fill
+        , transparent True
+        , mouseOver [ transparent False ]
+        , onLeft toolTip
+        ]
         none
 
 
@@ -222,7 +220,9 @@ viewPalette mapMsg =
     let
         swatch tip tile =
             viewBox
-                [ inFront (viewTooltip [ E.onClick <| mapMsg (SetBrush tile) ] tip) ]
+                [ E.onClick <| mapMsg (SetBrush tile)
+                , inFront (viewTooltip tip)
+                ]
                 tile
     in
     El.column
