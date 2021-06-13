@@ -159,6 +159,51 @@ update msg model =
 --- VIEW ---
 
 
+viewTooltip : List (Attribute msg) -> String -> Element msg
+viewTooltip attributes tip =
+    let
+        toolTip =
+            El.row
+                [ centerY
+                , spacing -2
+                , mouseOver [ transparent True ]
+                , htmlAttribute <| HA.style "user-select" "none"
+                ]
+                [ el
+                    [ padding 5
+                    , Border.color (rgb 0 0 0)
+                    , Border.widthEach { top = 2, right = 0, bottom = 2, left = 2 }
+                    ]
+                    (text tip)
+                , el
+                    [ centerY
+                    , moveLeft 10
+                    , width (px 24)
+                    , height (px 24)
+                    , Border.color (rgb 0 0 0)
+                    , Border.widthEach
+                        { top = 2
+                        , right = 2
+                        , bottom = 0
+                        , left = 0
+                        }
+                    , rotate (degrees 45)
+                    ]
+                    none
+                ]
+    in
+    el
+        ([ width fill
+         , height fill
+         , transparent True
+         , mouseOver [ transparent False ]
+         , onLeft toolTip
+         ]
+            ++ attributes
+        )
+        none
+
+
 viewBox : List (Attribute msg) -> Tile -> Element msg
 viewBox attributes tile =
     el
@@ -174,8 +219,17 @@ viewBox attributes tile =
 
 viewPalette : (Msg -> msg) -> Element msg
 viewPalette mapMsg =
+    let
+        swatch tip tile =
+            viewBox
+                [ inFront (viewTooltip [ E.onClick <| mapMsg (SetBrush tile) ] tip) ]
+                tile
+    in
     El.column
         [ spacing 10, alignTop ]
+        [ swatch "Track" (Track Down)
+        , swatch "R/B Splitter" (RBSplitter Down)
+        , swatch "Eraser" Empty
         ]
 
 
