@@ -7,6 +7,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Html.Attributes as HA
 import Level exposing (Code(..), Level, Outcome(..))
 import Robot exposing (Progress(..), Robot)
 import Tile exposing (Tile)
@@ -93,6 +94,49 @@ update msg model =
 --- VIEW ---
 
 
+viewTooltip : String -> Element msg
+viewTooltip tip =
+    let
+        toolTip =
+            El.row
+                [ centerY
+                , spacing -2
+                , mouseOver [ transparent True ]
+                , htmlAttribute <| HA.style "pointer-events" "none"
+                ]
+                [ el
+                    [ padding 5
+                    , Border.color (rgb 0 0 0)
+                    , Border.widthEach { top = 2, right = 0, bottom = 2, left = 2 }
+                    ]
+                    (text tip)
+                , el
+                    [ centerY
+                    , moveLeft 10
+                    , width (px 24)
+                    , height (px 24)
+                    , Border.color (rgb 0 0 0)
+                    , Border.widthEach
+                        { top = 2
+                        , right = 2
+                        , bottom = 0
+                        , left = 0
+                        }
+                    , rotate (degrees 45)
+                    ]
+                    none
+                ]
+    in
+    el
+        [ width fill
+        , height fill
+        , transparent True
+        , mouseOver [ transparent False ]
+        , onLeft toolTip
+        ]
+        none
+
+
 viewBox : List (Attribute msg) -> Tile -> Element msg
 viewBox attributes tile =
     el
@@ -150,31 +194,32 @@ slowDownIcon =
 viewReplayControls : (Msg -> msg) -> Model -> Element msg
 viewReplayControls mapMsg model =
     let
-        button =
+        control msg icon tip =
             Input.button
                 [ width (px tileSize)
                 , height (px tileSize)
                 , Border.color (rgb 0 0 0)
                 , Border.width 2
                 , Font.center
+                , inFront <| viewTooltip tip
                 ]
+                { onPress = Just (mapMsg msg)
+                , label = icon
+                }
 
-        playPauseButton =
+        playPause =
             if model.speed == 0 then
-                button { onPress = Just <| mapMsg Play, label = playIcon }
+                control Play playIcon "Play"
 
             else
-                button { onPress = Just <| mapMsg Pause, label = pauseIcon }
-
-        fastForwardButton =
-            button { onPress = Just <| mapMsg IncreaseSpeed, label = fastForwardIcon }
-
-        slowDownButton =
-            button { onPress = Just <| mapMsg DecreaseSpeed, label = slowDownIcon }
+                control Pause pauseIcon "Pause"
     in
     El.column
         [ spacing 10, alignTop, alignRight ]
-        [ slowDownButton, playPauseButton, fastForwardButton ]
+        [ control DecreaseSpeed slowDownIcon "Slower"
+        , playPause
+        , control IncreaseSpeed fastForwardIcon "Faster"
+        ]
 
 
 viewRobotInfoPane : Model -> Element msg
