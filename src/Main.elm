@@ -5,7 +5,6 @@ import Browser
 import Constants exposing (fontSize, headerSize, subHeadSize, tileSize)
 import Edit
 import Element as El exposing (..)
-import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
@@ -35,7 +34,6 @@ main =
 type alias Model =
     { level : Level
     , mode : Mode
-    , success : Bool
     }
 
 
@@ -217,24 +215,6 @@ update msg model =
 -- VIEW
 
 
-viewSuccessIndicator : Model -> Element Msg
-viewSuccessIndicator model =
-    let
-        color =
-            if model.success then
-                rgb 0 1 0
-
-            else
-                rgb 1 0 0
-    in
-    El.el
-        [ width (px 100)
-        , height fill
-        , Background.color color
-        ]
-        none
-
-
 viewLevelSelect : Element Msg
 viewLevelSelect =
     let
@@ -327,5 +307,4 @@ loadLevel : Level -> Model
 loadLevel level =
     { level = level
     , mode = Editing <| Edit.init (initBoard level.size)
-    , success = False
     }

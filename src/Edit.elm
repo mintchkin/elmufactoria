@@ -215,12 +215,12 @@ viewBox attributes tile =
         (Tile.view tile)
 
 
-viewPalette : (Msg -> msg) -> Element msg
-viewPalette mapMsg =
+viewPalette : Element Msg
+viewPalette =
     let
         swatch tip tile =
             viewBox
-                [ E.onClick <| mapMsg (SetBrush tile)
+                [ E.onClick (SetBrush tile)
                 , inFront (viewTooltip tip)
                 ]
                 tile
@@ -253,23 +253,23 @@ viewBrush model =
                 (viewBox [] tile)
 
 
-viewLeftPanel : (Msg -> msg) -> Model -> Element msg
-viewLeftPanel mapMsg _ =
-    el [ alignRight ] (viewPalette mapMsg)
+viewLeftPanel : Model -> Element Msg
+viewLeftPanel _ =
+    el [ alignRight ] viewPalette
 
 
-viewRightPanel : (Msg -> msg) -> Model -> Element msg
-viewRightPanel _ _ =
+viewRightPanel : Model -> Element Msg
+viewRightPanel _ =
     El.none
 
 
-viewGrid : (Msg -> msg) -> Model -> Element msg
-viewGrid mapMsg model =
+viewGrid : Model -> Element Msg
+viewGrid model =
     let
         viewGridCell index tile =
             viewBox
-                [ E.onMouseDown (mapMsg <| SetGridTile index)
-                , onDraggingMouseEnter (mapMsg <| SetGridTile index)
+                [ E.onMouseDown (SetGridTile index)
+                , onDraggingMouseEnter (SetGridTile index)
                 ]
                 tile
     in
@@ -288,9 +288,9 @@ panels :
     -> Model
     -> { viewLeftPanel : Element msg, viewRightPanel : Element msg, viewGrid : Element msg }
 panels mapMsg model =
-    { viewLeftPanel = viewLeftPanel mapMsg model
-    , viewRightPanel = viewRightPanel mapMsg model
-    , viewGrid = viewGrid mapMsg model
+    { viewLeftPanel = El.map mapMsg (viewLeftPanel model)
+    , viewRightPanel = El.map mapMsg (viewRightPanel model)
+    , viewGrid = El.map mapMsg (viewGrid model)
     }
 
 

@@ -191,8 +191,8 @@ slowDownIcon =
         (text "◀◀")
 
 
-viewReplayControls : (Msg -> msg) -> Model -> Element msg
-viewReplayControls mapMsg model =
+viewReplayControls : Model -> Element Msg
+viewReplayControls model =
     let
         control msg icon tip =
             Input.button
@@ -203,7 +203,7 @@ viewReplayControls mapMsg model =
                 , Font.center
                 , inFront <| viewTooltip tip
                 ]
-                { onPress = Just (mapMsg msg)
+                { onPress = Just msg
                 , label = icon
                 }
 
@@ -275,13 +275,13 @@ viewRobotInfoPane model =
         blocks
 
 
-viewLeftPanel : (Msg -> msg) -> Model -> Element msg
-viewLeftPanel mapMsg model =
-    viewReplayControls mapMsg model
+viewLeftPanel : Model -> Element Msg
+viewLeftPanel model =
+    viewReplayControls model
 
 
-viewRightPanel : (Msg -> msg) -> Model -> Element msg
-viewRightPanel _ model =
+viewRightPanel : Model -> Element msg
+viewRightPanel model =
     viewRobotInfoPane model
 
 
@@ -329,9 +329,9 @@ panels :
     -> Model
     -> { viewLeftPanel : Element msg, viewRightPanel : Element msg, viewGrid : Element msg }
 panels mapMsg model =
-    { viewLeftPanel = viewLeftPanel mapMsg model
-    , viewRightPanel = viewRightPanel mapMsg model
-    , viewGrid = viewGrid model
+    { viewLeftPanel = El.map mapMsg (viewLeftPanel model)
+    , viewRightPanel = El.map mapMsg (viewRightPanel model)
+    , viewGrid = El.map mapMsg (viewGrid model)
     }
 
 
