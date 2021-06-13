@@ -3,6 +3,7 @@ module Edit exposing (..)
 import Array exposing (Array)
 import Bitwise as Bit
 import Browser.Events as BE
+import Constants exposing (tileSize)
 import Direction exposing (Direction(..), Rotation(..))
 import Element as El exposing (..)
 import Element.Border as Border
@@ -242,15 +243,6 @@ panels mapMsg model =
     , viewRightPanel = viewRightPanel mapMsg model
     , viewGrid = viewGrid mapMsg model
     }
-
-
-
---- CONSTANTS ---
-
-
-tileSize : number
-tileSize =
-    50
 
 
 

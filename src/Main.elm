@@ -2,6 +2,7 @@ port module Main exposing (..)
 
 import Array exposing (Array)
 import Browser
+import Constants exposing (fontSize, headerSize, subHeadSize, tileSize)
 import Edit
 import Element as El exposing (..)
 import Element.Background as Background
@@ -258,8 +259,8 @@ viewLevelSelect =
 --- REPLAYING ---
 
 
-viewStartReplayButton : Model -> Element Msg
-viewStartReplayButton model =
+viewModeButton : Model -> Element Msg
+viewModeButton model =
     let
         button =
             Input.button
@@ -271,7 +272,7 @@ viewStartReplayButton model =
                 ]
 
         label =
-            el [ centerX, centerY, Font.size 25, Font.bold ] << text
+            el [ centerX, centerY, Font.size subHeadSize, Font.bold ] << text
     in
     case model.mode of
         Editing _ ->
@@ -292,22 +293,22 @@ view model =
                 Editing editModel ->
                     Edit.panels GotEditMsg editModel
     in
-    El.layout [ width fill, height fill ]
+    El.layout [ width fill, height fill, Font.size fontSize ]
         (El.column
             [ centerX, alignTop, spacing 20 ]
             [ El.column
-                [ spacing 10, padding 10, centerX, Font.bold, Font.size 25, width <| px (tileSize * 8) ]
+                [ spacing 10, padding 10, centerX, Font.bold, Font.size subHeadSize, width <| px (tileSize * 8) ]
                 [ text "Level Select:"
                 , viewLevelSelect
                 ]
             , El.paragraph
-                [ Font.center, Font.bold, Font.size 40 ]
+                [ Font.center, Font.bold, Font.size headerSize ]
                 [ text model.level.name ]
             , El.row [ width fill, spacing 10 ]
                 [ el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] panels.viewLeftPanel
                 , El.column [ centerX, spacing 10 ]
                     [ panels.viewGrid
-                    , viewStartReplayButton model
+                    , viewModeButton model
                     ]
                 , el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] panels.viewRightPanel
                 ]
@@ -328,12 +329,3 @@ loadLevel level =
     , mode = Editing <| Edit.init (initBoard level.size)
     , success = False
     }
-
-
-
---- CONSTANTS ---
-
-
-tileSize : number
-tileSize =
-    50

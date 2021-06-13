@@ -1,6 +1,7 @@
 module Replay exposing (Model, Msg, init, panels, subscriptions, update)
 
 import Array exposing (Array)
+import Constants exposing (tileSize)
 import Element as El exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -287,15 +288,6 @@ panels mapMsg model =
     , viewRightPanel = viewRightPanel mapMsg model
     , viewGrid = viewGrid model
     }
-
-
-
---- CONSTANTS ---
-
-
-tileSize : number
-tileSize =
-    50
 
 
 
