@@ -175,10 +175,7 @@ viewBox attributes tile =
 viewPalette : (Msg -> msg) -> Element msg
 viewPalette mapMsg =
     El.column
-        [ spacing 10, alignTop, alignRight ]
-        [ viewBox [ E.onClick (mapMsg <| SetBrush (Track Down)) ] (Track Down)
-        , viewBox [ E.onClick (mapMsg <| SetBrush (RBSplitter Down)) ] (RBSplitter Down)
-        , viewBox [ E.onClick (mapMsg <| SetBrush Empty) ] Empty
+        [ spacing 10, alignTop ]
         ]
 
 
@@ -204,7 +201,7 @@ viewBrush model =
 
 viewLeftPanel : (Msg -> msg) -> Model -> Element msg
 viewLeftPanel mapMsg _ =
-    viewPalette mapMsg
+    el [ alignRight ] (viewPalette mapMsg)
 
 
 viewRightPanel : (Msg -> msg) -> Model -> Element msg
@@ -223,14 +220,12 @@ viewGrid mapMsg model =
                 tile
     in
     El.column
-        []
-        (viewBrush model
-            :: (model.grid
-                    |> Array.indexedMap viewGridCell
-                    |> Array.toList
-                    |> squareUp
-                    |> List.map (El.row [])
-               )
+        [ inFront (viewBrush model) ]
+        (model.grid
+            |> Array.indexedMap viewGridCell
+            |> Array.toList
+            |> squareUp
+            |> List.map (El.row [])
         )
 
 
