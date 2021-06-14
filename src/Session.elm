@@ -1,8 +1,8 @@
-port module Session exposing (..)
+port module Session exposing (Session, Store, fromStore, getGrid, getLevel, receive, request, save)
 
 import Array exposing (Array)
-import Json.Decode as JsonD
-import Json.Encode as JsonE
+import Json.Decode as D exposing (Decoder, Value)
+import Json.Encode as E
 import Level exposing (Level)
 import Tile exposing (Tile)
 
@@ -11,37 +11,74 @@ type Session
     = Session Level (Array Tile)
 
 
+type Store
+    = Store Value
+
+
+getLevel : Session -> Level
+getLevel (Session level _) =
+    level
+
+
+getGrid : Session -> Array Tile
+getGrid (Session _ grid) =
+    grid
+
+
+decodeProgress : Decoder ( String, Array Tile )
+decodeProgress =
+    D.map2 Tuple.pair
+        (D.field "key" D.string)
+        (D.field "data" <| D.array Tile.fromJson)
+
+
 
 --- PORTS ---
 
 
-port requestStorage : JsonE.Value -> Cmd msg
+port requestStorage : Value -> Cmd msg
 
 
-port receiveStorage : (JsonE.Value -> msg) -> Sub msg
+port receiveStorage : (Value -> msg) -> Sub msg
 
 
-saveProgress : Level -> Array Tile -> Cmd msg
-saveProgress level grid =
+
+--- API ---
+
+
+save : Level -> Array Tile -> Cmd msg
+save level grid =
     requestStorage <|
-        JsonE.object
-            [ ( "op", JsonE.string "Save" )
-            , ( "key", JsonE.string level.name )
-            , ( "data", JsonE.array Tile.toJson grid )
+        E.object
+            [ ( "op", E.string "Save" )
+            , ( "key", E.string level.name )
+            , ( "data", E.array Tile.toJson grid )
             ]
 
 
-requestProgress : Level -> Cmd msg
-requestProgress level =
+request : Level -> Cmd msg
+request level =
     requestStorage <|
-        JsonE.object
-            [ ( "op", JsonE.string "Load" )
-            , ( "key", JsonE.string level.name )
+        E.object
+            [ ( "op", E.string "Load" )
+            , ( "key", E.string level.name )
             ]
 
 
-decodeProgress : JsonD.Decoder ( String, Array Tile )
-decodeProgress =
-    JsonD.map2 Tuple.pair
-        (JsonD.field "key" JsonD.string)
-        (JsonD.field "data" <| JsonD.array Tile.fromJson)
+receive : (Store -> msg) -> Sub msg
+receive getMsg =
+    receiveStorage (\v -> getMsg (Store v))
+
+
+fromStore : Level -> Store -> Session
+fromStore level (Store value) =
+    case D.decodeValue decodeProgress value of
+        Ok ( name, grid ) ->
+            if name == level.name then
+                Session level grid
+
+            else
+                Session level (Tile.initBoard level.size)
+
+        Err _ ->
+            Session level (Tile.initBoard level.size)

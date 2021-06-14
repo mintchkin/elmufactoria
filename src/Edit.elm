@@ -11,6 +11,8 @@ import Element.Events as E
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as Json
+import Level exposing (Level)
+import Session exposing (Store)
 import Tile exposing (Tile(..))
 
 
@@ -20,6 +22,7 @@ import Tile exposing (Tile(..))
 
 type alias Model =
     { mousePos : Position
+    , level : Level
     , grid : Array Tile
     , brush : Tile
     }
@@ -29,12 +32,15 @@ type Position
     = Position Float Float
 
 
-init : Array Tile -> Model
-init grid =
-    { mousePos = Position 0 0
-    , grid = grid
-    , brush = Empty
-    }
+init : Level -> ( Model, Cmd Msg )
+init level =
+    ( { mousePos = Position 0 0
+      , level = level
+      , grid = Tile.initBoard level.size
+      , brush = Empty
+      }
+    , Session.request level
+    )
 
 
 
@@ -52,16 +58,16 @@ subscriptions model =
         onMouseMove =
             case model.brush of
                 Empty ->
-                    Sub.none
+                    \_ -> Sub.none
 
                 _ ->
-                    BE.onMouseMove updatePosition
+                    BE.onMouseMove
     in
     Sub.batch
-        [ onMouseMove
+        [ onMouseMove updatePosition
         , BE.onMouseDown updatePosition
-        , BE.onKeyDown <|
-            Json.map PressKey (Json.field "key" Json.string)
+        , BE.onKeyDown <| Json.map PressKey (Json.field "key" Json.string)
+        , Session.receive GotSession
         ]
 
 
@@ -74,6 +80,7 @@ type Msg
     | PressKey String
     | SetGridTile Int
     | SetBrush Tile
+    | GotSession Store
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -148,11 +155,21 @@ update msg model =
 
                         _ ->
                             model.brush
+
+                newGrid =
+                    Array.set index replacement model.grid
             in
-            ( { model | grid = Array.set index replacement model.grid }, Cmd.none )
+            ( { model | grid = newGrid }, Session.save model.level newGrid )
 
         SetBrush tile ->
             ( { model | brush = tile }, Cmd.none )
+
+        GotSession store ->
+            let
+                session =
+                    Session.fromStore model.level store
+            in
+            ( { model | grid = Session.getGrid session }, Cmd.none )
 
 
 
@@ -307,22 +324,3 @@ onDraggingMouseEnter msg =
     htmlAttribute <|
         HE.on "mouseenter"
             (Json.field "buttons" Json.int |> Json.andThen (ifDragging msg))
-
-
-chunk : Int -> List a -> List (List a)
-chunk i list =
-    case List.take i list of
-        [] ->
-            []
-
-        group ->
-            group :: chunk i (List.drop i list)
-
-
-squareUp : List a -> List (List a)
-squareUp list =
-    let
-        getSize =
-            round << sqrt << toFloat << List.length
-    in
-    chunk (getSize list) list

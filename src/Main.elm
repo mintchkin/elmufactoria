@@ -9,19 +9,15 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
-import Json.Decode as JsonD
-import Json.Encode as JsonE
 import Level exposing (Level)
 import Replay
-import Session exposing (Session)
 import Tile exposing (Tile(..))
-import Time
 
 
 main : Program () Model Msg
 main =
     Browser.element
-        { init = init
+        { init = \_ -> loadLevel Level.first
         , view = view
         , update = update
         , subscriptions = subscriptions
@@ -33,9 +29,7 @@ main =
 
 
 type alias Model =
-    { level : Level
-    , mode : Mode
-    }
+    { mode : Mode }
 
 
 type Mode
@@ -54,11 +48,13 @@ initBoard size =
         |> Array.set (width ^ 2 - size) End
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( loadLevel Level.first
-    , Session.requestProgress Level.first
-    )
+loadLevel : Level -> ( Model, Cmd Msg )
+loadLevel level =
+    let
+        ( m, c ) =
+            Edit.init level
+    in
+    ( { mode = Editing m }, Cmd.map GotEditMsg c )
 
 
 
@@ -67,22 +63,12 @@ init _ =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    let
-        modeSubs =
-            case model.mode of
-                Replaying m ->
-                    Sub.map GotReplayMsg (Replay.subscriptions m)
+    case model.mode of
+        Replaying m ->
+            Sub.map GotReplayMsg (Replay.subscriptions m)
 
-                Editing m ->
-                    Sub.map GotEditMsg (Edit.subscriptions m)
-
-        autoSave =
-            Time.every 5000 (\_ -> AutoSave)
-
-        loadProgress =
-            Session.receiveStorage LoadProgress
-    in
-    Sub.batch [ autoSave, loadProgress, modeSubs ]
+        Editing m ->
+            Sub.map GotEditMsg (Edit.subscriptions m)
 
 
 
@@ -91,8 +77,6 @@ subscriptions model =
 
 type Msg
     = LoadLevel Level
-    | AutoSave
-    | LoadProgress JsonD.Value
     | Edit
     | Replay
     | GotReplayMsg Replay.Msg
@@ -103,49 +87,24 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         LoadLevel level ->
-            case model.mode of
-                Replaying replayModel ->
-                    ( loadLevel level, Cmd.batch [ Session.saveProgress level replayModel.grid, Session.requestProgress level ] )
-
-                Editing editModel ->
-                    ( loadLevel level, Cmd.batch [ Session.saveProgress level editModel.grid, Session.requestProgress level ] )
-
-        AutoSave ->
-            case model.mode of
-                Replaying replayModel ->
-                    ( model, Session.saveProgress model.level replayModel.grid )
-
-                Editing editModel ->
-                    ( model, Session.saveProgress model.level editModel.grid )
-
-        LoadProgress json ->
-            case JsonD.decodeValue Session.decodeProgress json of
-                Ok ( name, grid ) ->
-                    case ( model.level.name == name, model.mode ) of
-                        ( True, Replaying _ ) ->
-                            ( { model | mode = Replaying <| Replay.init grid model.level }, Cmd.none )
-
-                        ( True, Editing _ ) ->
-                            ( { model | mode = Editing <| Edit.init grid }, Cmd.none )
-
-                        _ ->
-                            ( model, Cmd.none )
-
-                Err _ ->
-                    ( model, Cmd.none )
+            loadLevel level
 
         Edit ->
             case model.mode of
                 Editing _ ->
                     ( model, Cmd.none )
 
-                Replaying { grid } ->
-                    ( { model | mode = Editing <| Edit.init grid }, Session.saveProgress model.level grid )
+                Replaying { level } ->
+                    let
+                        ( m, c ) =
+                            Edit.init level
+                    in
+                    ( { model | mode = Editing m }, Cmd.map GotEditMsg c )
 
         Replay ->
             case model.mode of
-                Editing { grid } ->
-                    ( { model | mode = Replaying <| Replay.init grid model.level }, Session.saveProgress model.level grid )
+                Editing { grid, level } ->
+                    ( { model | mode = Replaying <| Replay.init grid level }, Cmd.none )
 
                 Replaying _ ->
                     ( model, Cmd.none )
@@ -236,6 +195,14 @@ view model =
 
                 Editing editModel ->
                     Edit.panels GotEditMsg editModel
+
+        level =
+            case model.mode of
+                Replaying m ->
+                    m.level
+
+                Editing m ->
+                    m.level
     in
     El.layout [ width fill, height fill, Font.size fontSize ]
         (El.column
@@ -247,7 +214,7 @@ view model =
                 ]
             , El.paragraph
                 [ Font.center, Font.bold, Font.size headerSize ]
-                [ text model.level.name ]
+                [ text level.name ]
             , El.row [ width fill, spacing 10 ]
                 [ el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] panels.viewLeftPanel
                 , El.column [ centerX, spacing 10 ]
@@ -258,17 +225,6 @@ view model =
                 ]
             , El.paragraph
                 [ Font.center ]
-                [ text model.level.description ]
+                [ text level.description ]
             ]
         )
-
-
-
--- HELPERS
-
-
-loadLevel : Level -> Model
-loadLevel level =
-    { level = level
-    , mode = Editing <| Edit.init (initBoard level.size)
-    }

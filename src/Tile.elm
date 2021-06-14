@@ -4,6 +4,7 @@ module Tile exposing
     , fromJson
     , fromKey
     , getDirection
+    , initBoard
     , invert
     , matchDirection
     , toJson
@@ -336,6 +337,17 @@ fromJson =
     in
     JsonD.field "tile" JsonD.string
         |> JsonD.andThen decodeTile
+
+
+initBoard : Int -> Array Tile
+initBoard size =
+    let
+        width =
+            size * 2 - 1
+    in
+    Array.repeat (width ^ 2) Empty
+        |> Array.set (size - 1) Begin
+        |> Array.set (width ^ 2 - size) End
 
 
 

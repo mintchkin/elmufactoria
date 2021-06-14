@@ -16,6 +16,7 @@ import Time
 
 type alias Model =
     { grid : Array Tile
+    , level : Level
     , speed : Int
     , robots : List Robot
     }
@@ -24,6 +25,7 @@ type alias Model =
 init : Array Tile -> Level -> Model
 init grid level =
     { grid = grid
+    , level = level
     , speed = 1
     , robots = Robot.initAll level
     }
