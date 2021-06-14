@@ -28,11 +28,7 @@ main =
 -- MODEL
 
 
-type alias Model =
-    { mode : Mode }
-
-
-type Mode
+type Model
     = Editing Edit.Model
     | Replaying Replay.Model
 
@@ -54,7 +50,7 @@ loadLevel level =
         ( m, c ) =
             Edit.init level
     in
-    ( { mode = Editing m }, Cmd.map GotEditMsg c )
+    ( Editing m, Cmd.map GotEditMsg c )
 
 
 
@@ -63,7 +59,7 @@ loadLevel level =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.mode of
+    case model of
         Replaying m ->
             Sub.map GotReplayMsg (Replay.subscriptions m)
 
@@ -90,7 +86,7 @@ update msg model =
             loadLevel level
 
         Edit ->
-            case model.mode of
+            case model of
                 Editing _ ->
                     ( model, Cmd.none )
 
@@ -99,36 +95,36 @@ update msg model =
                         ( m, c ) =
                             Edit.init level
                     in
-                    ( { model | mode = Editing m }, Cmd.map GotEditMsg c )
+                    ( Editing m, Cmd.map GotEditMsg c )
 
         Replay ->
-            case model.mode of
+            case model of
                 Editing { grid, level } ->
-                    ( { model | mode = Replaying <| Replay.init grid level }, Cmd.none )
+                    ( Replaying <| Replay.init grid level, Cmd.none )
 
                 Replaying _ ->
                     ( model, Cmd.none )
 
         GotReplayMsg subMsg ->
-            case model.mode of
+            case model of
                 Replaying subModel ->
                     let
                         ( m, c ) =
                             Replay.update subMsg subModel
                     in
-                    ( { model | mode = Replaying m }, Cmd.map GotReplayMsg c )
+                    ( Replaying m, Cmd.map GotReplayMsg c )
 
                 _ ->
                     ( model, Cmd.none )
 
         GotEditMsg editMsg ->
-            case model.mode of
+            case model of
                 Editing editModel ->
                     let
                         ( m, c ) =
                             Edit.update editMsg editModel
                     in
-                    ( { model | mode = Editing m }, Cmd.map GotEditMsg c )
+                    ( Editing m, Cmd.map GotEditMsg c )
 
                 _ ->
                     ( model, Cmd.none )
@@ -177,7 +173,7 @@ viewModeButton model =
         label =
             el [ centerX, centerY, Font.size subHeadSize, Font.bold ] << text
     in
-    case model.mode of
+    case model of
         Editing _ ->
             button { onPress = Just Replay, label = label "Test Solution" }
 
@@ -189,7 +185,7 @@ view : Model -> Html Msg
 view model =
     let
         panels =
-            case model.mode of
+            case model of
                 Replaying replayModel ->
                     Replay.panels GotReplayMsg replayModel
 
@@ -197,7 +193,7 @@ view model =
                     Edit.panels GotEditMsg editModel
 
         level =
-            case model.mode of
+            case model of
                 Replaying m ->
                     m.level
 
