@@ -1,4 +1,4 @@
-port module Main exposing (..)
+module Main exposing (..)
 
 import Array exposing (Array)
 import Browser
@@ -13,6 +13,7 @@ import Json.Decode as JsonD
 import Json.Encode as JsonE
 import Level exposing (Level)
 import Replay
+import Session exposing (Session)
 import Tile exposing (Tile(..))
 import Time
 
@@ -56,55 +57,8 @@ initBoard size =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( loadLevel Level.first
-    , requestProgress Level.first
+    , Session.requestProgress Level.first
     )
-
-
-
--- PORTS
-
-
-port requestStorage : JsonE.Value -> Cmd msg
-
-
-port receiveStorage : (JsonE.Value -> msg) -> Sub msg
-
-
-saveProgress : Model -> Cmd msg
-saveProgress model =
-    let
-        progressEncoder key grid =
-            JsonE.object
-                [ ( "op", JsonE.string "Save" )
-                , ( "key", JsonE.string key )
-                , ( "data", JsonE.array Tile.toJson grid )
-                ]
-    in
-    case model.mode of
-        Editing { grid } ->
-            requestStorage <| progressEncoder model.level.name grid
-
-        Replaying { grid } ->
-            requestStorage <| progressEncoder model.level.name grid
-
-
-requestProgress : Level -> Cmd msg
-requestProgress level =
-    let
-        request =
-            JsonE.object
-                [ ( "op", JsonE.string "Load" )
-                , ( "key", JsonE.string level.name )
-                ]
-    in
-    requestStorage request
-
-
-decodeProgress : JsonD.Decoder ( String, Array Tile )
-decodeProgress =
-    JsonD.map2 Tuple.pair
-        (JsonD.field "key" JsonD.string)
-        (JsonD.field "data" <| JsonD.array Tile.fromJson)
 
 
 
@@ -126,7 +80,7 @@ subscriptions model =
             Time.every 5000 (\_ -> AutoSave)
 
         loadProgress =
-            receiveStorage LoadProgress
+            Session.receiveStorage LoadProgress
     in
     Sub.batch [ autoSave, loadProgress, modeSubs ]
 
@@ -149,13 +103,23 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         LoadLevel level ->
-            ( loadLevel level, Cmd.batch [ saveProgress model, requestProgress level ] )
+            case model.mode of
+                Replaying replayModel ->
+                    ( loadLevel level, Cmd.batch [ Session.saveProgress level replayModel.grid, Session.requestProgress level ] )
+
+                Editing editModel ->
+                    ( loadLevel level, Cmd.batch [ Session.saveProgress level editModel.grid, Session.requestProgress level ] )
 
         AutoSave ->
-            ( model, saveProgress model )
+            case model.mode of
+                Replaying replayModel ->
+                    ( model, Session.saveProgress model.level replayModel.grid )
+
+                Editing editModel ->
+                    ( model, Session.saveProgress model.level editModel.grid )
 
         LoadProgress json ->
-            case JsonD.decodeValue decodeProgress json of
+            case JsonD.decodeValue Session.decodeProgress json of
                 Ok ( name, grid ) ->
                     case ( model.level.name == name, model.mode ) of
                         ( True, Replaying _ ) ->
@@ -176,12 +140,12 @@ update msg model =
                     ( model, Cmd.none )
 
                 Replaying { grid } ->
-                    ( { model | mode = Editing <| Edit.init grid }, saveProgress model )
+                    ( { model | mode = Editing <| Edit.init grid }, Session.saveProgress model.level grid )
 
         Replay ->
             case model.mode of
                 Editing { grid } ->
-                    ( { model | mode = Replaying <| Replay.init grid model.level }, saveProgress model )
+                    ( { model | mode = Replaying <| Replay.init grid model.level }, Session.saveProgress model.level grid )
 
                 Replaying _ ->
                     ( model, Cmd.none )
