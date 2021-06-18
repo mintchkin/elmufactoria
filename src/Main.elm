@@ -184,14 +184,6 @@ viewModeButton model =
 view : Model -> Html Msg
 view model =
     let
-        panels =
-            case model of
-                Replaying replayModel ->
-                    Replay.panels GotReplayMsg replayModel
-
-                Editing editModel ->
-                    Edit.panels GotEditMsg editModel
-
         level =
             case model of
                 Replaying m ->
@@ -199,6 +191,14 @@ view model =
 
                 Editing m ->
                     m.level
+
+        body =
+            case model of
+                Replaying replayModel ->
+                    Replay.view Edit GotReplayMsg replayModel
+
+                Editing editModel ->
+                    Edit.view Replay GotEditMsg editModel
     in
     El.layout [ width fill, height fill, Font.size fontSize ]
         (El.column
@@ -211,14 +211,7 @@ view model =
             , El.paragraph
                 [ Font.center, Font.bold, Font.size headerSize ]
                 [ text level.name ]
-            , El.row [ width fill, spacing 10 ]
-                [ el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] panels.viewLeftPanel
-                , El.column [ centerX, spacing 10 ]
-                    [ panels.viewGrid
-                    , viewModeButton model
-                    ]
-                , el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] panels.viewRightPanel
-                ]
+            , body
             , El.paragraph
                 [ Font.center ]
                 [ text level.description ]

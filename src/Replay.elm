@@ -1,7 +1,7 @@
-module Replay exposing (Model, Msg, init, panels, subscriptions, update)
+module Replay exposing (Model, Msg, init, subscriptions, update, view)
 
 import Array exposing (Array)
-import Constants exposing (tileSize)
+import Constants exposing (subHeadSize, tileSize)
 import Element as El exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -139,19 +139,6 @@ viewTooltip tip =
         none
 
 
-viewBox : List (Attribute msg) -> Tile -> Element msg
-viewBox attributes tile =
-    el
-        ([ width (px tileSize)
-         , height (px tileSize)
-         , Border.color (rgb 0 0 0)
-         , Border.width 2
-         ]
-            ++ attributes
-        )
-        (Tile.view tile)
-
-
 playIcon : Element msg
 playIcon =
     el [ centerX, centerY, Font.size 40 ] (text "▶︎")
@@ -255,7 +242,7 @@ viewRobotInfoPane model =
                     []
 
         gridSize =
-            tileSize * getSize model.grid
+            tileSize * (model.level.size * 2 - 1)
     in
     El.column
         [ width (px tileSize)
@@ -320,21 +307,41 @@ viewGrid model =
         model.grid
 
 
-panels :
-    (Msg -> msg)
-    -> Model
-    -> { viewLeftPanel : Element msg, viewRightPanel : Element msg, viewGrid : Element msg }
-panels mapMsg model =
-    { viewLeftPanel = El.map mapMsg (viewLeftPanel model)
-    , viewRightPanel = El.map mapMsg (viewRightPanel model)
-    , viewGrid = El.map mapMsg (viewGrid model)
-    }
+toEditButton : msg -> Element msg
+toEditButton toReplay =
+    let
+        label =
+            el [ centerX, centerY, Font.size subHeadSize, Font.bold ] (text "Test Solution")
+    in
+    Input.button
+        [ width fill
+        , height (px tileSize)
+        , Border.color (rgb 0 0 0)
+        , Border.width 2
+        , Font.center
+        ]
+        { onPress = Just toReplay
+        , label = label
+        }
 
 
+view : msg -> (Msg -> msg) -> Model -> Element msg
+view toEdit mapMsg model =
+    let
+        leftPanel =
+            El.map mapMsg <|
+                el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] (viewLeftPanel model)
 
---- HELPERS ---
+        main =
+            El.column [ centerX, spacing 10 ]
+                [ El.map mapMsg (viewGrid model)
+                , toEditButton toEdit
+                ]
 
-
-getSize : Array a -> Int
-getSize =
-    round << sqrt << toFloat << Array.length
+        rightPanel =
+            El.map mapMsg <|
+                el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] (viewRightPanel model)
+    in
+    El.row
+        [ width fill, spacing 10 ]
+        [ leftPanel, main, rightPanel ]

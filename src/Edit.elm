@@ -3,11 +3,13 @@ module Edit exposing (..)
 import Array exposing (Array)
 import Bitwise as Bit
 import Browser.Events as BE
-import Constants exposing (tileSize)
+import Constants exposing (subHeadSize, tileSize)
 import Direction exposing (Direction(..), Rotation(..))
 import Element as El exposing (..)
 import Element.Border as Border
 import Element.Events as E
+import Element.Font as Font
+import Element.Input as Input
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as Json
@@ -291,15 +293,44 @@ viewGrid model =
         model.grid
 
 
-panels :
-    (Msg -> msg)
-    -> Model
-    -> { viewLeftPanel : Element msg, viewRightPanel : Element msg, viewGrid : Element msg }
-panels mapMsg model =
-    { viewLeftPanel = El.map mapMsg (viewLeftPanel model)
-    , viewRightPanel = El.map mapMsg (viewRightPanel model)
-    , viewGrid = El.map mapMsg (viewGrid model)
-    }
+toReplayButton : msg -> Element msg
+toReplayButton toReplay =
+    let
+        label =
+            el [ centerX, centerY, Font.size subHeadSize, Font.bold ] (text "Test Solution")
+    in
+    Input.button
+        [ width fill
+        , height (px tileSize)
+        , Border.color (rgb 0 0 0)
+        , Border.width 2
+        , Font.center
+        ]
+        { onPress = Just toReplay
+        , label = label
+        }
+
+
+view : msg -> (Msg -> msg) -> Model -> Element msg
+view toReplay mapMsg model =
+    let
+        leftPanel =
+            El.map mapMsg <|
+                el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] (viewLeftPanel model)
+
+        main =
+            El.column [ centerX, spacing 10 ]
+                [ El.map mapMsg (viewGrid model)
+                , toReplayButton toReplay
+                ]
+
+        rightPanel =
+            El.map mapMsg <|
+                el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] none
+    in
+    El.row
+        [ width fill, spacing 10 ]
+        [ leftPanel, main, rightPanel ]
 
 
 
