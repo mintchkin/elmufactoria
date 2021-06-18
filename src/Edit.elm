@@ -6,6 +6,7 @@ import Browser.Events as BE
 import Constants exposing (subHeadSize, tileSize)
 import Direction exposing (Direction(..), Rotation(..))
 import Element as El exposing (..)
+import Element.Background as Background
 import Element.Border as Border
 import Element.Events as E
 import Element.Font as Font
@@ -178,49 +179,6 @@ update msg model =
 --- VIEW ---
 
 
-viewTooltip : String -> Element msg
-viewTooltip tip =
-    let
-        toolTip =
-            El.row
-                [ centerY
-                , spacing -2
-                , mouseOver [ transparent True ]
-                , htmlAttribute <| HA.style "pointer-events" "none"
-                ]
-                [ el
-                    [ padding 5
-                    , Border.color (rgb 0 0 0)
-                    , Border.widthEach { top = 2, right = 0, bottom = 2, left = 2 }
-                    ]
-                    (text tip)
-                , el
-                    [ centerY
-                    , moveLeft 10
-                    , width (px 24)
-                    , height (px 24)
-                    , Border.color (rgb 0 0 0)
-                    , Border.widthEach
-                        { top = 2
-                        , right = 2
-                        , bottom = 0
-                        , left = 0
-                        }
-                    , rotate (degrees 45)
-                    ]
-                    none
-                ]
-    in
-    el
-        [ width fill
-        , height fill
-        , transparent True
-        , mouseOver [ transparent False ]
-        , onLeft toolTip
-        ]
-        none
-
-
 viewBox : List (Attribute msg) -> Tile -> Element msg
 viewBox attributes tile =
     el
@@ -272,16 +230,6 @@ viewBrush model =
                 (viewBox [] tile)
 
 
-viewLeftPanel : Model -> Element Msg
-viewLeftPanel model =
-    el [ alignRight, inFront <| viewBrush model ] viewPalette
-
-
-viewRightPanel : Model -> Element Msg
-viewRightPanel _ =
-    El.none
-
-
 viewGrid : Model -> Element Msg
 viewGrid model =
     Tile.viewGrid
@@ -316,7 +264,7 @@ view toReplay mapMsg model =
     let
         leftPanel =
             El.map mapMsg <|
-                el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] (viewLeftPanel model)
+                el [ width fill, height fill ] viewPalette
 
         main =
             El.column [ centerX, spacing 10 ]
@@ -325,11 +273,10 @@ view toReplay mapMsg model =
                 ]
 
         rightPanel =
-            El.map mapMsg <|
-                el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] none
+            el [ width (fill |> minimum tileSize), height fill ] none
     in
     El.row
-        [ width fill, spacing 10 ]
+        [ width fill, spacing 10, inFront <| viewBrush model ]
         [ leftPanel, main, rightPanel ]
 
 
@@ -355,3 +302,53 @@ onDraggingMouseEnter msg =
     htmlAttribute <|
         HE.on "mouseenter"
             (Json.field "buttons" Json.int |> Json.andThen (ifDragging msg))
+
+
+
+--- TOOLTIP ---
+
+
+leftToolTip : String -> Attribute msg
+leftToolTip tip =
+    onLeft <|
+        El.row
+            [ centerY
+            , spacing -2
+            , mouseOver [ transparent True ]
+            , htmlAttribute <| HA.style "pointer-events" "none"
+            ]
+            [ el
+                [ padding 5
+                , Background.color (rgb 1 1 1)
+                , Border.color (rgb 0 0 0)
+                , Border.widthEach { top = 2, right = 0, bottom = 2, left = 2 }
+                ]
+                (text tip)
+            , el
+                [ centerY
+                , moveLeft 10
+                , width (px 24)
+                , height (px 24)
+                , Border.color (rgb 0 0 0)
+                , Border.widthEach
+                    { top = 2
+                    , right = 2
+                    , bottom = 0
+                    , left = 0
+                    }
+                , rotate (degrees 45)
+                ]
+                none
+            ]
+
+
+viewTooltip : String -> Element msg
+viewTooltip tip =
+    el
+        [ width fill
+        , height fill
+        , transparent True
+        , mouseOver [ transparent False ]
+        , leftToolTip tip
+        ]
+        none
