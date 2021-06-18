@@ -96,49 +96,6 @@ update msg model =
 --- VIEW ---
 
 
-viewTooltip : String -> Element msg
-viewTooltip tip =
-    let
-        toolTip =
-            El.row
-                [ centerY
-                , spacing -2
-                , mouseOver [ transparent True ]
-                , htmlAttribute <| HA.style "pointer-events" "none"
-                ]
-                [ el
-                    [ padding 5
-                    , Border.color (rgb 0 0 0)
-                    , Border.widthEach { top = 2, right = 0, bottom = 2, left = 2 }
-                    ]
-                    (text tip)
-                , el
-                    [ centerY
-                    , moveLeft 10
-                    , width (px 24)
-                    , height (px 24)
-                    , Border.color (rgb 0 0 0)
-                    , Border.widthEach
-                        { top = 2
-                        , right = 2
-                        , bottom = 0
-                        , left = 0
-                        }
-                    , rotate (degrees 45)
-                    ]
-                    none
-                ]
-    in
-    el
-        [ width fill
-        , height fill
-        , transparent True
-        , mouseOver [ transparent False ]
-        , onLeft toolTip
-        ]
-        none
-
-
 playIcon : Element msg
 playIcon =
     el [ centerX, centerY, Font.size 40 ] (text "▶︎")
@@ -204,39 +161,41 @@ viewReplayControls model =
                 control Pause pauseIcon "Pause"
     in
     El.column
-        [ spacing 10, alignTop, alignRight ]
+        [ alignRight, alignTop, spacing 10 ]
         [ control DecreaseSpeed slowDownIcon "Slower"
         , playPause
         , control IncreaseSpeed fastForwardIcon "Faster"
         ]
 
 
+viewCodeDot : Code -> Element msg
+viewCodeDot code =
+    let
+        circle color =
+            el
+                [ Background.color color
+                , Border.rounded tileSize
+                , width (px <| tileSize - 20)
+                , height (px <| tileSize - 20)
+                , centerX
+                ]
+                none
+    in
+    case code of
+        Blue ->
+            circle (rgb 0 0 1)
+
+        Red ->
+            circle (rgb 1 0 0)
+
+
 viewRobotInfoPane : Model -> Element msg
 viewRobotInfoPane model =
     let
-        block code =
-            let
-                circle color =
-                    el
-                        [ Background.color color
-                        , Border.rounded tileSize
-                        , width (px <| tileSize - 20)
-                        , height (px <| tileSize - 20)
-                        , centerX
-                        ]
-                        none
-            in
-            case code of
-                Blue ->
-                    circle (rgb 0 0 1)
-
-                Red ->
-                    circle (rgb 1 0 0)
-
-        blocks =
+        dots =
             case model.robots of
                 robot :: _ ->
-                    List.map block robot.codes
+                    List.map viewCodeDot robot.codes
 
                 _ ->
                     []
@@ -261,17 +220,7 @@ viewRobotInfoPane model =
                 ]
                 none
         ]
-        blocks
-
-
-viewLeftPanel : Model -> Element Msg
-viewLeftPanel model =
-    viewReplayControls model
-
-
-viewRightPanel : Model -> Element msg
-viewRightPanel model =
-    viewRobotInfoPane model
+        dots
 
 
 viewGrid : Model -> Element msg
@@ -330,7 +279,8 @@ view toEdit mapMsg model =
     let
         leftPanel =
             El.map mapMsg <|
-                el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] (viewLeftPanel model)
+                el [ height fill, width fill ]
+                    (viewReplayControls model)
 
         main =
             El.column [ centerX, spacing 10 ]
@@ -340,8 +290,59 @@ view toEdit mapMsg model =
 
         rightPanel =
             El.map mapMsg <|
-                el [ alignTop, width (fill |> minimum (tileSize * 2)), height fill ] (viewRightPanel model)
+                el [ width fill, height fill ]
+                    (viewRobotInfoPane model)
     in
     El.row
         [ width fill, spacing 10 ]
         [ leftPanel, main, rightPanel ]
+
+
+
+--- TOOLTIP ---
+
+
+leftToolTip : String -> Attribute msg
+leftToolTip tip =
+    onLeft <|
+        El.row
+            [ centerY
+            , spacing -2
+            , mouseOver [ transparent True ]
+            , htmlAttribute <| HA.style "pointer-events" "none"
+            ]
+            [ el
+                [ padding 5
+                , Background.color (rgb 1 1 1)
+                , Border.color (rgb 0 0 0)
+                , Border.widthEach { top = 2, right = 0, bottom = 2, left = 2 }
+                ]
+                (text tip)
+            , el
+                [ centerY
+                , moveLeft 10
+                , width (px 24)
+                , height (px 24)
+                , Border.color (rgb 0 0 0)
+                , Border.widthEach
+                    { top = 2
+                    , right = 2
+                    , bottom = 0
+                    , left = 0
+                    }
+                , rotate (degrees 45)
+                ]
+                none
+            ]
+
+
+viewTooltip : String -> Element msg
+viewTooltip tip =
+    el
+        [ width fill
+        , height fill
+        , transparent True
+        , mouseOver [ transparent False ]
+        , leftToolTip tip
+        ]
+        none
