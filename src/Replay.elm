@@ -70,14 +70,15 @@ update msg model =
 
                 robot :: rest ->
                     case Robot.advance model.grid robot of
-                        Finished Failed ->
-                            ( { model | robots = [ robot ] }, Cmd.none )
+                        Working newRobot ->
+                            ( { model | robots = newRobot :: rest }, Cmd.none )
 
                         Finished _ ->
-                            ( { model | robots = rest }, Cmd.none )
+                            if Robot.checkBot model.level model.grid robot then
+                                ( { model | robots = rest }, Cmd.none )
 
-                        Working bot ->
-                            ( { model | robots = bot :: rest }, Cmd.none )
+                            else
+                                ( { model | robots = [ robot ] }, Cmd.none )
 
         IncreaseSpeed ->
             ( { model | speed = clamp 1 10 (model.speed + 1) }, Cmd.none )
@@ -227,14 +228,15 @@ viewGrid : Model -> Element msg
 viewGrid model =
     let
         indicateFinished robot =
-            case Robot.isFinished model.grid robot of
-                Finished Failed ->
-                    [ Border.color (rgb 1 0 0), Border.width 4 ]
+            case Robot.advance model.grid robot of
+                Finished _ ->
+                    if Robot.checkBot model.level model.grid robot then
+                        [ Border.color (rgb 0 1 0), Border.width 4 ]
 
-                Finished (Passed _) ->
-                    [ Border.color (rgb 0 1 0), Border.width 4 ]
+                    else
+                        [ Border.color (rgb 1 0 0), Border.width 4 ]
 
-                _ ->
+                Working _ ->
                     []
 
         indicateBot robot index =

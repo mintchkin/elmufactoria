@@ -1,4 +1,4 @@
-module Robot exposing (Progress(..), Robot, advance, checkSolution, initAll, isFinished, view)
+module Robot exposing (Progress(..), Robot, advance, checkBot, checkSolution, initAll, isFinished, view)
 
 import Array exposing (Array)
 import Direction exposing (Direction(..), Rotation(..))
@@ -32,6 +32,16 @@ checkSolution { criteria, tests, size } solution =
             Robot [] (size - 1)
     in
     List.all (\codes -> criteria codes <| simulate solution <| initRobot codes) tests
+
+
+checkBot : Level -> Array Tile -> Robot -> Bool
+checkBot level solution robot =
+    let
+        ( _, initial ) =
+            List.head (List.reverse robot.memories)
+                |> Maybe.withDefault ( robot.position, robot.codes )
+    in
+    level.criteria initial (simulate solution robot)
 
 
 simulate : Array Tile -> Robot -> Outcome
