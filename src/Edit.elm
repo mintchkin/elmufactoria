@@ -15,7 +15,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as Json
 import Level exposing (Level)
-import Session exposing (Store)
+import Session
 import Tile exposing (Tile(..))
 
 
@@ -35,7 +35,7 @@ type Position
     = Position Float Float
 
 
-init : Level -> ( Model, Cmd Msg )
+init : Level -> ( Model, Cmd msg )
 init level =
     ( { mousePos = Position 0 0
       , level = level
@@ -70,7 +70,6 @@ subscriptions model =
         [ onMouseMove updatePosition
         , BE.onMouseDown updatePosition
         , BE.onKeyDown <| Json.map PressKey (Json.field "key" Json.string)
-        , Session.receive GotSession
         ]
 
 
@@ -83,7 +82,6 @@ type Msg
     | PressKey String
     | SetGridTile Int
     | SetBrush Tile
-    | GotSession Store
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -167,13 +165,6 @@ update msg model =
         SetBrush tile ->
             ( { model | brush = tile }, Cmd.none )
 
-        GotSession store ->
-            let
-                session =
-                    Session.fromStore model.level store
-            in
-            ( { model | grid = Session.getGrid session }, Cmd.none )
-
 
 
 --- VIEW ---
@@ -203,7 +194,7 @@ viewPalette =
                 tile
     in
     El.column
-        [ spacing 10, alignTop ]
+        [ spacing 10, alignRight, alignTop ]
         [ swatch "Track" (Track Down)
         , swatch "R/B Splitter" (RBSplitter Down)
         , swatch "Eraser" Empty

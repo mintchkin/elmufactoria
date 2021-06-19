@@ -10,6 +10,7 @@ import Element.Input as Input
 import Html.Attributes as HA
 import Level exposing (Code(..), Level, Outcome(..))
 import Robot exposing (Progress(..), Robot)
+import Session
 import Tile exposing (Tile)
 import Time
 
@@ -22,13 +23,15 @@ type alias Model =
     }
 
 
-init : Array Tile -> Level -> Model
-init grid level =
-    { grid = grid
-    , level = level
-    , speed = 1
-    , robots = Robot.initAll level
-    }
+init : Level -> ( Model, Cmd msg )
+init level =
+    ( { grid = Tile.initBoard level.size
+      , level = level
+      , speed = 1
+      , robots = Robot.initAll level
+      }
+    , Session.request level
+    )
 
 
 

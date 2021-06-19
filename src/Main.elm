@@ -11,13 +11,14 @@ import Element.Input as Input
 import Html exposing (Html)
 import Level exposing (Level)
 import Replay
+import Session exposing (Store)
 import Tile exposing (Tile(..))
 
 
 main : Program () Model Msg
 main =
     Browser.element
-        { init = \_ -> loadLevel Level.first
+        { init = \_ -> mapUpdate Editing GotEditMsg (Edit.init Level.first)
         , view = view
         , update = update
         , subscriptions = subscriptions
@@ -44,13 +45,9 @@ initBoard size =
         |> Array.set (width ^ 2 - size) End
 
 
-loadLevel : Level -> ( Model, Cmd Msg )
-loadLevel level =
-    let
-        ( m, c ) =
-            Edit.init level
-    in
-    ( Editing m, Cmd.map GotEditMsg c )
+mapUpdate : (model -> Model) -> (msg -> Msg) -> ( model, Cmd msg ) -> ( Model, Cmd Msg )
+mapUpdate mapModel mapCmd =
+    Tuple.mapBoth mapModel (Cmd.map mapCmd)
 
 
 
@@ -59,12 +56,16 @@ loadLevel level =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model of
-        Replaying m ->
-            Sub.map GotReplayMsg (Replay.subscriptions m)
+    let
+        modeSubs =
+            case model of
+                Replaying m ->
+                    Sub.map GotReplayMsg (Replay.subscriptions m)
 
-        Editing m ->
-            Sub.map GotEditMsg (Edit.subscriptions m)
+                Editing m ->
+                    Sub.map GotEditMsg (Edit.subscriptions m)
+    in
+    Sub.batch [ modeSubs, Session.receive GotSession ]
 
 
 
@@ -77,13 +78,14 @@ type Msg
     | Replay
     | GotReplayMsg Replay.Msg
     | GotEditMsg Edit.Msg
+    | GotSession Store
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         LoadLevel level ->
-            loadLevel level
+            mapUpdate Editing GotEditMsg (Edit.init level)
 
         Edit ->
             case model of
@@ -91,16 +93,12 @@ update msg model =
                     ( model, Cmd.none )
 
                 Replaying { level } ->
-                    let
-                        ( m, c ) =
-                            Edit.init level
-                    in
-                    ( Editing m, Cmd.map GotEditMsg c )
+                    mapUpdate Editing GotEditMsg (Edit.init level)
 
         Replay ->
             case model of
-                Editing { grid, level } ->
-                    ( Replaying <| Replay.init grid level, Cmd.none )
+                Editing { level } ->
+                    mapUpdate Replaying GotReplayMsg (Replay.init level)
 
                 Replaying _ ->
                     ( model, Cmd.none )
@@ -108,11 +106,7 @@ update msg model =
         GotReplayMsg subMsg ->
             case model of
                 Replaying subModel ->
-                    let
-                        ( m, c ) =
-                            Replay.update subMsg subModel
-                    in
-                    ( Replaying m, Cmd.map GotReplayMsg c )
+                    mapUpdate Replaying GotReplayMsg (Replay.update subMsg subModel)
 
                 _ ->
                     ( model, Cmd.none )
@@ -120,14 +114,22 @@ update msg model =
         GotEditMsg editMsg ->
             case model of
                 Editing editModel ->
-                    let
-                        ( m, c ) =
-                            Edit.update editMsg editModel
-                    in
-                    ( Editing m, Cmd.map GotEditMsg c )
+                    mapUpdate Editing GotEditMsg (Edit.update editMsg editModel)
 
                 _ ->
                     ( model, Cmd.none )
+
+        GotSession store ->
+            let
+                getGrid { level } =
+                    Session.getGrid <| Session.fromStore level store
+            in
+            case model of
+                Editing editModel ->
+                    ( Editing { editModel | grid = getGrid editModel }, Cmd.none )
+
+                Replaying replayModel ->
+                    ( Replaying { replayModel | grid = getGrid replayModel }, Cmd.none )
 
 
 
@@ -152,33 +154,6 @@ viewLevelSelect =
     El.wrappedRow
         [ width fill, spacing 10 ]
         (List.indexedMap levelButton Level.list)
-
-
-
---- REPLAYING ---
-
-
-viewModeButton : Model -> Element Msg
-viewModeButton model =
-    let
-        button =
-            Input.button
-                [ width fill
-                , height (px tileSize)
-                , Border.color (rgb 0 0 0)
-                , Border.width 2
-                , Font.center
-                ]
-
-        label =
-            el [ centerX, centerY, Font.size subHeadSize, Font.bold ] << text
-    in
-    case model of
-        Editing _ ->
-            button { onPress = Just Replay, label = label "Test Solution" }
-
-        Replaying _ ->
-            button { onPress = Just Edit, label = label "Back To Editing" }
 
 
 view : Model -> Html Msg
