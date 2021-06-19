@@ -15,6 +15,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as Json
 import Level exposing (Level)
+import Robot
 import Session
 import Tile exposing (Tile(..))
 
@@ -28,7 +29,14 @@ type alias Model =
     , level : Level
     , grid : Array Tile
     , brush : Tile
+    , indicator : Indicator
     }
+
+
+type Indicator
+    = Default
+    | Thinking Float
+    | Result Float
 
 
 type Position
@@ -41,6 +49,7 @@ init level =
       , level = level
       , grid = Tile.initBoard level.size
       , brush = Empty
+      , indicator = Default
       }
     , Session.request level
     )
@@ -65,11 +74,20 @@ subscriptions model =
 
                 _ ->
                     BE.onMouseMove
+
+        updateIndicator =
+            case model.indicator of
+                Default ->
+                    Sub.none
+
+                _ ->
+                    BE.onAnimationFrameDelta TickIndicator
     in
     Sub.batch
         [ onMouseMove updatePosition
         , BE.onMouseDown updatePosition
         , BE.onKeyDown <| Json.map PressKey (Json.field "key" Json.string)
+        , updateIndicator
         ]
 
 
@@ -82,6 +100,7 @@ type Msg
     | PressKey String
     | SetGridTile Int
     | SetBrush Tile
+    | TickIndicator Float
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -160,10 +179,29 @@ update msg model =
                 newGrid =
                     Array.set index replacement model.grid
             in
-            ( { model | grid = newGrid }, Session.save model.level newGrid )
+            ( { model | grid = newGrid, indicator = Thinking 3000 }, Session.save model.level newGrid )
 
         SetBrush tile ->
             ( { model | brush = tile }, Cmd.none )
+
+        TickIndicator delta ->
+            case model.indicator of
+                Thinking remaining ->
+                    if remaining - delta <= 0 then
+                        ( { model | indicator = Result 3000 }, Cmd.none )
+
+                    else
+                        ( { model | indicator = Thinking (remaining - delta) }, Cmd.none )
+
+                Result remaining ->
+                    if remaining - delta <= 0 then
+                        ( { model | indicator = Default }, Cmd.none )
+
+                    else
+                        ( { model | indicator = Result (remaining - delta) }, Cmd.none )
+
+                Default ->
+                    ( model, Cmd.none )
 
 
 
@@ -232,11 +270,40 @@ viewGrid model =
         model.grid
 
 
-toReplayButton : msg -> Element msg
-toReplayButton toReplay =
+toReplayButton : msg -> Model -> Element msg
+toReplayButton toReplay model =
     let
+        isCorrect =
+            Robot.checkSolution model.level model.grid
+
         label =
-            el [ centerX, centerY, Font.size subHeadSize, Font.bold ] (text "Test Solution")
+            case ( isCorrect, model.indicator ) of
+                ( _, Default ) ->
+                    el [ centerX, centerY, Font.size subHeadSize, Font.bold ] (text "Release Robots")
+
+                ( _, Thinking ticks ) ->
+                    if (round ticks |> modBy 1000) > 500 then
+                        el [ centerX, centerY, moveRight 10 ] Robot.view
+
+                    else
+                        el [ centerX, centerY, moveLeft 10 ] Robot.view
+
+                ( True, Result _ ) ->
+                    el [ centerX, centerY, Font.size subHeadSize, Font.bold ] (text "✔️")
+
+                ( False, Result _ ) ->
+                    el [ centerX, centerY, Font.size subHeadSize, Font.bold ] (text "❌")
+
+        background =
+            case ( isCorrect, model.indicator ) of
+                ( _, Thinking _ ) ->
+                    Background.color (rgb 1 1 1)
+
+                ( True, _ ) ->
+                    Background.color (rgba 0 1 0 0.1)
+
+                ( False, _ ) ->
+                    Background.color (rgba 1 0 0 0.1)
     in
     Input.button
         [ width fill
@@ -244,6 +311,7 @@ toReplayButton toReplay =
         , Border.color (rgb 0 0 0)
         , Border.width 2
         , Font.center
+        , background
         ]
         { onPress = Just toReplay
         , label = label
@@ -260,7 +328,7 @@ view toReplay mapMsg model =
         main =
             El.column [ centerX, spacing 10 ]
                 [ El.map mapMsg (viewGrid model)
-                , toReplayButton toReplay
+                , toReplayButton toReplay model
                 ]
 
         rightPanel =

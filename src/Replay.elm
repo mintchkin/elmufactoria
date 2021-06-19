@@ -265,7 +265,7 @@ toEditButton : msg -> Element msg
 toEditButton toReplay =
     let
         label =
-            el [ centerX, centerY, Font.size subHeadSize, Font.bold ] (text "Test Solution")
+            el [ centerX, centerY, Font.size subHeadSize, Font.bold ] (text "Back to Editing")
     in
     Input.button
         [ width fill
