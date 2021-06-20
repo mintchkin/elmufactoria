@@ -15,7 +15,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as Json
 import Layout
-import Level exposing (Level)
+import Level exposing (Code(..), Level)
 import Robot
 import Session
 import Tile exposing (Tile(..))
@@ -68,14 +68,6 @@ subscriptions model =
                 (Json.field "clientX" Json.float)
                 (Json.field "clientY" Json.float)
 
-        onMouseMove =
-            case model.brush of
-                Empty ->
-                    \_ -> Sub.none
-
-                _ ->
-                    BE.onMouseMove
-
         updateIndicator =
             case model.indicator of
                 Default ->
@@ -85,7 +77,7 @@ subscriptions model =
                     BE.onAnimationFrameDelta TickIndicator
     in
     Sub.batch
-        [ onMouseMove updatePosition
+        [ BE.onMouseMove updatePosition
         , BE.onMouseDown updatePosition
         , BE.onKeyDown <| Json.map PressKey (Json.field "key" Json.string)
         , updateIndicator
@@ -238,6 +230,7 @@ viewPalette =
         , El.column [ spacing 10, alignRight, alignTop ]
             [ swatch "Track" (Track Down)
             , swatch "R/B Splitter" (RBSplitter Down)
+            , swatch "R/B Writer" (Writer Blue Down)
             ]
         ]
 

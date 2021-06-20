@@ -7,7 +7,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Html.Attributes as HA
 import Layout
 import Level exposing (Code(..), Level, Outcome(..))
 import Robot exposing (Progress(..), Robot)

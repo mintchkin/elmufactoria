@@ -20,6 +20,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Json.Decode as JsonD
 import Json.Encode as JsonE
+import Level exposing (Code(..))
 
 
 type Tile
@@ -28,6 +29,7 @@ type Tile
     | MultiTrack Direction Rotation
     | RBSplitter Direction
     | BRSplitter Direction
+    | Writer Code Direction
     | Begin
     | End
 
@@ -68,6 +70,48 @@ viewTrack direction =
         )
 
 
+viewWriter : Code -> Direction -> Element msg
+viewWriter code direction =
+    let
+        color =
+            case code of
+                Blue ->
+                    blue
+
+                Red ->
+                    red
+
+        arrow =
+            el
+                [ Border.widthEach
+                    { top = 0
+                    , right = 4
+                    , bottom = 4
+                    , left = 0
+                    }
+                , width (px 15)
+                , height (px 15)
+                , centerX
+                , centerY
+                , rotate (degrees 45)
+                ]
+                none
+    in
+    column
+        [ width fill, height fill, spacing -5, rotate (Direction.toAngle direction) ]
+        [ el
+            [ Background.color color
+            , Border.rounded tileSize
+            , width (px <| tileSize - 20)
+            , height (px <| tileSize - 20)
+            , centerX
+            , centerY
+            ]
+            none
+        , arrow
+        ]
+
+
 view : Tile -> Element msg
 view tile =
     case tile of
@@ -75,10 +119,10 @@ view tile =
             El.none
 
         Begin ->
-            El.el [ width fill, height fill, Background.color (rgb 1 0 0) ] none
+            El.el [ width fill, height fill, Background.color red ] none
 
         End ->
-            El.el [ width fill, height fill, Background.color (rgb 0 0 1) ] none
+            El.el [ width fill, height fill, Background.color blue ] none
 
         Track direction ->
             viewTrack direction
@@ -96,6 +140,9 @@ view tile =
 
         BRSplitter direction ->
             viewSplitter blue red direction
+
+        Writer code direction ->
+            viewWriter code direction
 
 
 viewGrid : (Int -> List (Attribute msg)) -> Array Tile -> Element msg
@@ -139,6 +186,9 @@ direct direction tile =
         BRSplitter _ ->
             BRSplitter direction
 
+        Writer code _ ->
+            Writer code direction
+
         other ->
             other
 
@@ -156,6 +206,9 @@ getDirection tile =
             Just direction
 
         BRSplitter direction ->
+            Just direction
+
+        Writer _ direction ->
             Just direction
 
         _ ->
@@ -181,6 +234,12 @@ invert tile =
         BRSplitter direction ->
             RBSplitter direction
 
+        Writer Red direction ->
+            Writer Blue direction
+
+        Writer Blue direction ->
+            Writer Red direction
+
         other ->
             other
 
@@ -193,6 +252,9 @@ fromKey key =
 
         "2" ->
             Just (RBSplitter Down)
+
+        "3" ->
+            Just (Writer Blue Down)
 
         _ ->
             Nothing
@@ -222,6 +284,14 @@ toJson tile =
 
                 CounterClock ->
                     JsonE.string "CounterClock"
+
+        codeEncoder code =
+            case code of
+                Blue ->
+                    JsonE.string "Blue"
+
+                Red ->
+                    JsonE.string "Red"
     in
     case tile of
         Empty ->
@@ -252,6 +322,13 @@ toJson tile =
             JsonE.object
                 [ ( "tile", JsonE.string "BRSplitter" )
                 , ( "dir", dirEncoder dir )
+                ]
+
+        Writer code dir ->
+            JsonE.object
+                [ ( "tile", JsonE.string "Writer" )
+                , ( "dir", dirEncoder dir )
+                , ( "code", codeEncoder code )
                 ]
 
         Begin ->
@@ -304,6 +381,21 @@ fromJson =
             in
             JsonD.string |> JsonD.andThen decode
 
+        codeDecoder =
+            let
+                decode name =
+                    case name of
+                        "Red" ->
+                            JsonD.succeed Red
+
+                        "Blue" ->
+                            JsonD.succeed Blue
+
+                        _ ->
+                            JsonD.fail "Could not decode code"
+            in
+            JsonD.string |> JsonD.andThen decode
+
         decodeTile name =
             case name of
                 "Empty" ->
@@ -324,6 +416,11 @@ fromJson =
 
                 "BRSplitter" ->
                     JsonD.map BRSplitter
+                        (JsonD.field "dir" dirDecoder)
+
+                "Writer" ->
+                    JsonD.map2 Writer
+                        (JsonD.field "code" codeDecoder)
                         (JsonD.field "dir" dirDecoder)
 
                 "Begin" ->

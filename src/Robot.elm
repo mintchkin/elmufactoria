@@ -135,6 +135,9 @@ getDirection robot tile =
                 _ ->
                     Just direction
 
+        Writer _ direction ->
+            Just direction
+
         Empty ->
             Nothing
 
@@ -192,6 +195,9 @@ updateCodes tiles robot =
 
                 [] ->
                     robot
+
+        Just (Writer code _) ->
+            { robot | codes = robot.codes ++ [ code ] }
 
         _ ->
             robot
