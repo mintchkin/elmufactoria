@@ -226,7 +226,10 @@ viewPalette =
     in
     El.row [ spacing 10, alignRight, alignTop ]
         [ El.column [ spacing 10, alignRight, alignTop ]
-            [ swatch "Eraser" Empty ]
+            [ swatch "Eraser" Empty
+            , swatch "G/Y Splitter" (Splitter Green Down)
+            , swatch "G/Y Writer" (Writer Yellow Down)
+            ]
         , El.column [ spacing 10, alignRight, alignTop ]
             [ swatch "Track" (Track Down)
             , swatch "R/B Splitter" (Splitter Red Down)

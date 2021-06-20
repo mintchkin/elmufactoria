@@ -20,7 +20,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Json.Decode as JsonD
 import Json.Encode as JsonE
-import Level exposing (Code(..))
+import Level exposing (Code(..), codeColor, invertCode)
 
 
 type Tile
@@ -41,15 +41,10 @@ viewSplitter : Code -> Direction -> Element msg
 viewSplitter left direction =
     let
         right =
-            case left of
-                Red ->
-                    Blue
-
-                Blue ->
-                    Red
+            invertCode left
 
         indicator attrs =
-            el ([ width (px 10), height (px 10) ] ++ attrs) none
+            el ([ width (px 12), height (px 12), Border.width 1, Border.color (rgba 0 0 0 0.3) ] ++ attrs) none
     in
     El.row
         [ width fill
@@ -101,6 +96,7 @@ viewWriter code direction =
         [ el
             [ Background.color (codeColor code)
             , Border.rounded tileSize
+            , Border.width 2
             , width (px <| tileSize - 20)
             , height (px <| tileSize - 20)
             , centerX
@@ -219,18 +215,10 @@ invert : Tile -> Tile
 invert tile =
     case tile of
         Splitter code direction ->
-            case code of
-                Blue ->
-                    Splitter Red direction
+            Splitter (invertCode code) direction
 
-                Red ->
-                    Splitter Blue direction
-
-        Writer Red direction ->
-            Writer Blue direction
-
-        Writer Blue direction ->
-            Writer Red direction
+        Writer code direction ->
+            Writer (invertCode code) direction
 
         other ->
             other
@@ -284,6 +272,12 @@ toJson tile =
 
                 Red ->
                     JsonE.string "Red"
+
+                Green ->
+                    JsonE.string "Green"
+
+                Yellow ->
+                    JsonE.string "Yellow"
     in
     case tile of
         Empty ->
@@ -378,6 +372,12 @@ fromJson =
                         "Blue" ->
                             JsonD.succeed Blue
 
+                        "Green" ->
+                            JsonD.succeed Green
+
+                        "Yellow" ->
+                            JsonD.succeed Yellow
+
                         _ ->
                             JsonD.fail "Could not decode code"
             in
@@ -443,16 +443,6 @@ blue =
 red : El.Color
 red =
     rgb 1 0 0
-
-
-codeColor : Code -> El.Color
-codeColor code =
-    case code of
-        Red ->
-            red
-
-        Blue ->
-            blue
 
 
 chunk : Int -> List a -> List (List a)

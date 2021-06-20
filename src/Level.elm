@@ -1,4 +1,6 @@
-module Level exposing (Code(..), Level, Outcome(..), first, list)
+module Level exposing (Code(..), Level, Outcome(..), codeColor, first, invertCode, list)
+
+import Element as El
 
 
 type alias Level =
@@ -17,6 +19,40 @@ type alias Criteria =
 type Code
     = Red
     | Blue
+    | Green
+    | Yellow
+
+
+invertCode : Code -> Code
+invertCode code =
+    case code of
+        Red ->
+            Blue
+
+        Blue ->
+            Red
+
+        Green ->
+            Yellow
+
+        Yellow ->
+            Green
+
+
+codeColor : Code -> El.Color
+codeColor code =
+    case code of
+        Red ->
+            El.rgb 1 0 0
+
+        Blue ->
+            El.rgb 0 0 1
+
+        Green ->
+            El.rgb 0 1 0
+
+        Yellow ->
+            El.rgb 1 1 0
 
 
 type Outcome

@@ -8,7 +8,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Layout
-import Level exposing (Code(..), Level, Outcome(..))
+import Level exposing (Code(..), Level, Outcome(..), codeColor)
 import Robot exposing (Progress(..), Robot)
 import Session
 import Tile exposing (Tile)
@@ -174,23 +174,15 @@ viewReplayControls model =
 
 viewCodeDot : Code -> Element msg
 viewCodeDot code =
-    let
-        circle color =
-            el
-                [ Background.color color
-                , Border.rounded tileSize
-                , width (px <| tileSize - 20)
-                , height (px <| tileSize - 20)
-                , centerX
-                ]
-                none
-    in
-    case code of
-        Blue ->
-            circle (rgb 0 0 1)
-
-        Red ->
-            circle (rgb 1 0 0)
+    el
+        [ Background.color (codeColor code)
+        , Border.rounded tileSize
+        , Border.width 2
+        , width (px <| tileSize - 20)
+        , height (px <| tileSize - 20)
+        , centerX
+        ]
+        none
 
 
 viewRobotInfoPane : Model -> Element msg

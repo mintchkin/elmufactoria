@@ -4,7 +4,7 @@ import Array exposing (Array)
 import Direction exposing (Direction(..), Rotation(..))
 import Element as El exposing (..)
 import Element.Background as Background
-import Level exposing (Code(..), Level, Outcome(..))
+import Level exposing (Code(..), Level, Outcome(..), invertCode)
 import Tile exposing (Tile(..))
 
 
@@ -114,18 +114,16 @@ getDirection robot tile =
             trajectory |> Maybe.map continue
 
         Splitter code direction ->
-            case ( code, robot.codes ) of
-                ( Red, Red :: _ ) ->
-                    Just (Direction.rotate Clockwise direction)
+            case robot.codes of
+                robotCode :: _ ->
+                    if robotCode == code then
+                        Just (Direction.rotate Clockwise direction)
 
-                ( Blue, Blue :: _ ) ->
-                    Just (Direction.rotate Clockwise direction)
+                    else if robotCode == invertCode code then
+                        Just (Direction.rotate CounterClock direction)
 
-                ( Red, Blue :: _ ) ->
-                    Just (Direction.rotate CounterClock direction)
-
-                ( Blue, Red :: _ ) ->
-                    Just (Direction.rotate CounterClock direction)
+                    else
+                        Just direction
 
                 _ ->
                     Just direction
@@ -170,18 +168,13 @@ updateCodes : Array Tile -> Robot -> Robot
 updateCodes tiles robot =
     case Array.get robot.position tiles of
         Just (Splitter code _) ->
-            case ( code, robot.codes ) of
-                ( Red, Red :: rest ) ->
-                    { robot | codes = rest }
+            case robot.codes of
+                robotCode :: rest ->
+                    if robotCode == code || robotCode == invertCode code then
+                        { robot | codes = rest }
 
-                ( Red, Blue :: rest ) ->
-                    { robot | codes = rest }
-
-                ( Blue, Red :: rest ) ->
-                    { robot | codes = rest }
-
-                ( Blue, Blue :: rest ) ->
-                    { robot | codes = rest }
+                    else
+                        robot
 
                 _ ->
                     robot
