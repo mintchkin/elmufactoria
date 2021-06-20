@@ -3,25 +3,29 @@ name: github pages
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-18.04
+    env:
+      NPM_CONFIG_PREFIX: .npm-global
     steps:
       - uses: actions/checkout@v2
+
+      - name: Setup Elm
+        uses: jorelali/setup-elm@v3
+        with:
+          elm-version: 0.19.1
 
       - name: Setup Node
         uses: actions/setup-node@v2
         with:
-          node-version: "14"
+          node-version: 15
 
-      - name: Setup Elm
-        run: npm install elm --global
-
-      - name: Make
+      - name: Build
         run: make build
 
       - name: Move files
@@ -32,7 +36,7 @@ jobs:
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
