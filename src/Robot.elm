@@ -113,23 +113,18 @@ getDirection robot tile =
             in
             trajectory |> Maybe.map continue
 
-        RBSplitter direction ->
-            case robot.codes of
-                Red :: _ ->
+        Splitter code direction ->
+            case ( code, robot.codes ) of
+                ( Red, Red :: _ ) ->
                     Just (Direction.rotate Clockwise direction)
 
-                Blue :: _ ->
+                ( Blue, Blue :: _ ) ->
+                    Just (Direction.rotate Clockwise direction)
+
+                ( Red, Blue :: _ ) ->
                     Just (Direction.rotate CounterClock direction)
 
-                _ ->
-                    Just direction
-
-        BRSplitter direction ->
-            case robot.codes of
-                Blue :: _ ->
-                    Just (Direction.rotate Clockwise direction)
-
-                Red :: _ ->
+                ( Blue, Red :: _ ) ->
                     Just (Direction.rotate CounterClock direction)
 
                 _ ->
@@ -174,26 +169,21 @@ remember robot =
 updateCodes : Array Tile -> Robot -> Robot
 updateCodes tiles robot =
     case Array.get robot.position tiles of
-        Just (RBSplitter _) ->
-            case robot.codes of
-                Red :: rest ->
+        Just (Splitter code _) ->
+            case ( code, robot.codes ) of
+                ( Red, Red :: rest ) ->
                     { robot | codes = rest }
 
-                Blue :: rest ->
+                ( Red, Blue :: rest ) ->
                     { robot | codes = rest }
 
-                [] ->
-                    robot
-
-        Just (BRSplitter _) ->
-            case robot.codes of
-                Red :: rest ->
+                ( Blue, Red :: rest ) ->
                     { robot | codes = rest }
 
-                Blue :: rest ->
+                ( Blue, Blue :: rest ) ->
                     { robot | codes = rest }
 
-                [] ->
+                _ ->
                     robot
 
         Just (Writer code _) ->

@@ -27,8 +27,7 @@ type Tile
     = Empty
     | Track Direction
     | MultiTrack Direction Rotation
-    | RBSplitter Direction
-    | BRSplitter Direction
+    | Splitter Code Direction
     | Writer Code Direction
     | Begin
     | End
@@ -38,9 +37,17 @@ type Tile
 --- VIEW ---
 
 
-viewSplitter : El.Color -> El.Color -> Direction -> Element msg
-viewSplitter left right direction =
+viewSplitter : Code -> Direction -> Element msg
+viewSplitter left direction =
     let
+        right =
+            case left of
+                Red ->
+                    Blue
+
+                Blue ->
+                    Red
+
         indicator attrs =
             el ([ width (px 10), height (px 10) ] ++ attrs) none
     in
@@ -49,9 +56,9 @@ viewSplitter left right direction =
         , height fill
         , rotate (Direction.toAngle direction)
         ]
-        [ indicator [ Background.color left, alignLeft ]
+        [ indicator [ Background.color (codeColor left), alignLeft ]
         , indicator [ Background.color (rgb 0.3 0.3 0.3), centerX, alignBottom ]
-        , indicator [ Background.color right, alignRight ]
+        , indicator [ Background.color (codeColor right), alignRight ]
         ]
 
 
@@ -73,14 +80,6 @@ viewTrack direction =
 viewWriter : Code -> Direction -> Element msg
 viewWriter code direction =
     let
-        color =
-            case code of
-                Blue ->
-                    blue
-
-                Red ->
-                    red
-
         arrow =
             el
                 [ Border.widthEach
@@ -100,7 +99,7 @@ viewWriter code direction =
     column
         [ width fill, height fill, spacing -5, rotate (Direction.toAngle direction) ]
         [ el
-            [ Background.color color
+            [ Background.color (codeColor code)
             , Border.rounded tileSize
             , width (px <| tileSize - 20)
             , height (px <| tileSize - 20)
@@ -135,11 +134,8 @@ view tile =
                 ]
                 (viewTrack fst)
 
-        RBSplitter direction ->
-            viewSplitter red blue direction
-
-        BRSplitter direction ->
-            viewSplitter blue red direction
+        Splitter left direction ->
+            viewSplitter left direction
 
         Writer code direction ->
             viewWriter code direction
@@ -180,11 +176,8 @@ direct direction tile =
         MultiTrack _ rotation ->
             MultiTrack direction rotation
 
-        RBSplitter _ ->
-            RBSplitter direction
-
-        BRSplitter _ ->
-            BRSplitter direction
+        Splitter code _ ->
+            Splitter code direction
 
         Writer code _ ->
             Writer code direction
@@ -202,10 +195,7 @@ getDirection tile =
         MultiTrack direction _ ->
             Just direction
 
-        RBSplitter direction ->
-            Just direction
-
-        BRSplitter direction ->
+        Splitter _ direction ->
             Just direction
 
         Writer _ direction ->
@@ -228,11 +218,13 @@ matchDirection from target =
 invert : Tile -> Tile
 invert tile =
     case tile of
-        RBSplitter direction ->
-            BRSplitter direction
+        Splitter code direction ->
+            case code of
+                Blue ->
+                    Splitter Red direction
 
-        BRSplitter direction ->
-            RBSplitter direction
+                Red ->
+                    Splitter Blue direction
 
         Writer Red direction ->
             Writer Blue direction
@@ -251,7 +243,7 @@ fromKey key =
             Just (Track Down)
 
         "2" ->
-            Just (RBSplitter Down)
+            Just (Splitter Red Down)
 
         "3" ->
             Just (Writer Blue Down)
@@ -312,16 +304,11 @@ toJson tile =
                 , ( "rot", rotEncoder rot )
                 ]
 
-        RBSplitter dir ->
+        Splitter code dir ->
             JsonE.object
-                [ ( "tile", JsonE.string "RBSplitter" )
+                [ ( "tile", JsonE.string "Splitter" )
                 , ( "dir", dirEncoder dir )
-                ]
-
-        BRSplitter dir ->
-            JsonE.object
-                [ ( "tile", JsonE.string "BRSplitter" )
-                , ( "dir", dirEncoder dir )
+                , ( "code", codeEncoder code )
                 ]
 
         Writer code dir ->
@@ -410,12 +397,9 @@ fromJson =
                         (JsonD.field "dir" dirDecoder)
                         (JsonD.field "rot" rotDecoder)
 
-                "RBSplitter" ->
-                    JsonD.map RBSplitter
-                        (JsonD.field "dir" dirDecoder)
-
-                "BRSplitter" ->
-                    JsonD.map BRSplitter
+                "Splitter" ->
+                    JsonD.map2 Splitter
+                        (JsonD.field "code" codeDecoder)
                         (JsonD.field "dir" dirDecoder)
 
                 "Writer" ->
@@ -459,6 +443,16 @@ blue =
 red : El.Color
 red =
     rgb 1 0 0
+
+
+codeColor : Code -> El.Color
+codeColor code =
+    case code of
+        Red ->
+            red
+
+        Blue ->
+            blue
 
 
 chunk : Int -> List a -> List (List a)

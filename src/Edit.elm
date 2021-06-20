@@ -229,7 +229,7 @@ viewPalette =
             [ swatch "Eraser" Empty ]
         , El.column [ spacing 10, alignRight, alignTop ]
             [ swatch "Track" (Track Down)
-            , swatch "R/B Splitter" (RBSplitter Down)
+            , swatch "R/B Splitter" (Splitter Red Down)
             , swatch "R/B Writer" (Writer Blue Down)
             ]
         ]
