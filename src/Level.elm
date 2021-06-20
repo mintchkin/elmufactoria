@@ -159,8 +159,8 @@ list =
             , [ Red, Blue, Red, Blue, Red, Blue, Red, Blue, Red, Red ]
             ]
       }
-    , { name = "No Cutting In Line"
-      , description = "Move the first color of each robot back to the end of the list"
+    , { name = "Front To Back"
+      , description = "Move the first color of each robot to the end of the list"
       , size = 3
       , criteria =
             \initial outcome ->
@@ -180,6 +180,31 @@ list =
             , [ Red ]
             , [ Red, Blue, Red ]
             , [ Blue, Blue, Red, Blue, Red, Blue ]
+            ]
+      }
+    , { name = "A Strong Finish"
+      , description = "Allow only robots whose codes end with Red"
+      , size = 4
+      , criteria =
+            \initial outcome ->
+                case ( List.reverse initial, outcome ) of
+                    ( Red :: _, Passed _ ) ->
+                        True
+
+                    ( Red :: _, Failed ) ->
+                        False
+
+                    ( _, Passed _ ) ->
+                        False
+
+                    ( _, Failed ) ->
+                        True
+      , tests =
+            [ []
+            , [ Blue ]
+            , [ Red ]
+            , [ Red, Red, Red, Red, Red, Blue ]
+            , [ Red, Blue, Red, Blue, Red, Blue, Red, Blue, Red ]
             ]
       }
     ]

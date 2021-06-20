@@ -228,12 +228,18 @@ fromKey : String -> Maybe Tile
 fromKey key =
     case key of
         "1" ->
-            Just (Track Down)
+            Just (Splitter Green Down)
 
         "2" ->
-            Just (Splitter Red Down)
+            Just (Track Down)
 
         "3" ->
+            Just (Splitter Red Down)
+
+        "q" ->
+            Just (Writer Yellow Down)
+
+        "e" ->
             Just (Writer Blue Down)
 
         _ ->
