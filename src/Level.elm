@@ -123,4 +123,27 @@ list =
             , [ Red, Blue, Red, Blue, Red, Blue, Red, Blue, Red, Red ]
             ]
       }
+    , { name = "No Cutting In Line"
+      , description = "Move the first color of each robot back to the end of the list"
+      , size = 3
+      , criteria =
+            \initial outcome ->
+                let
+                    reorder codes =
+                        List.append (List.drop 1 codes) (List.take 1 codes)
+                in
+                case outcome of
+                    Failed ->
+                        False
+
+                    Passed codes ->
+                        reorder initial == codes
+      , tests =
+            [ []
+            , [ Blue ]
+            , [ Red ]
+            , [ Red, Blue, Red ]
+            , [ Blue, Blue, Red, Blue, Red, Blue ]
+            ]
+      }
     ]
