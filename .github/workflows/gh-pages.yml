@@ -28,15 +28,12 @@ jobs:
       - name: Build
         run: make build
 
-      - name: Move files
-        run: |
-          mkdir ./public
-          mv ./index.html ./public/
-          mv ./elmufactoria.js ./public/
+      - name: Copy Files
+        run: mkdir -p ./build && cp -t ./build index.html elmufactoria.js
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         if: github.ref == 'refs/heads/master'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
+          publish_dir: ./build
