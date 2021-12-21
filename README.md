@@ -12,6 +12,10 @@ Robots will only ever enter carrying the colors Blue and Red, but Yellow and Gre
 
 Tiles may be rotated with WASD or inverted with the space bar before being placed on the grid, and you can test out a solution at any time with button under the grid.
 
+## Development
+
+Development and build scripts are available as `make` scripts `make dev` and `make build`.
+
 ---
 
 Written in [Elm](https://elm-lang.org/), heavily inspired by the 2010 flash game [Manufactoria](http://pleasingfungus.com/Manufactoria/).
