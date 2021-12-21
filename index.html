@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="elmufactoria.js"></script>
+    <title>Elmufactoria</title>
+  </head>
+  <body ondragstart="return false;" ondrop="return false;">
+    <div id="main"></div>
+  </body>
+  <script>
+    var prefix = "elmufactoria-session";
+    var session = null;
+
+    var app = Elm.Main.init({
+      node: document.getElementById("main"),
+    });
+
+    app.ports.requestStorage.subscribe(function (message) {
+      var key = prefix + "-" + message.key;
+      switch (message.op) {
+        case "Save":
+          localStorage.setItem(key, JSON.stringify(message));
+          break;
+        case "Load":
+          if ((session = localStorage.getItem(key))) {
+            app.ports.receiveStorage.send(JSON.parse(session));
+          }
+          break;
+      }
+    });
+  </script>
+</html>
